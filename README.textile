@@ -1,3 +1,5 @@
+h1. "Pure Data":puredata.info/ testing external
 
-This readme file should describe what this library does, where to find more
-info and get help, and any specific instructions for building it.
+h3. Async Functional testing for *Pure Data*.
+
+p. _under development...  Come back in a few days._ 
