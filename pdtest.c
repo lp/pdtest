@@ -47,6 +47,9 @@ typedef struct pdtest
   t_object x_obj;
   lua_State *lua;
   t_canvas *canvas;
+  int async_num;
+  int async_run;
+  t_clock  *async_clock;
 } t_pdtest;
 
 /* Declarations */
@@ -60,17 +63,33 @@ void pdtest_free(t_pdtest *x);
 void pdtest_suite(t_pdtest *x, t_symbol *s, int argc, t_atom *argv);
 void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv);
 
+/* pdtest scheduler method */
+static void pdtest_run(t_pdtest *x);
+static void pdtest_next(t_pdtest * x);
+static void pdtest_yield(t_pdtest * x);
+static void pdtest_schedule(t_pdtest *x);
+void pdtest_start(t_pdtest *x, t_symbol *s);
+void pdtest_stop(t_pdtest *x, t_symbol *s);
+
 /* helper functions */
 void pdtest_luasetup(t_pdtest *x);
 static const char *pdtest_lua_reader(lua_State *lua, void *rr, size_t *size);
 void pdtest_lua_loadsuite(t_pdtest *x, const char *filename);
+static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count);
+static void pdtest_report(t_pdtest *x);
 
 /* Lua functions */
 static int luafunc_pdtest_message(lua_State *lua);
 static int luafunc_pdtest_error(lua_State *lua);
+static int luafunc_pdtest_post(lua_State *lua);
+static int luafunc_pdtest_errorHandler(lua_State *lua);
 
 /* Lua source code */
 const char* pdtest_lua_init;
+const char* pdtest_lua_next;
+const char* pdtest_lua_result;
+const char* pdtest_lua_yield;
+const char* pdtest_lua_report;
 
 void pdtest_setup(void)
 {
@@ -86,6 +105,10 @@ void pdtest_setup(void)
     class_addmethod(pdtest_class,
         (t_method)pdtest_result, gensym("result"),
         A_GIMME, 0);
+    class_addmethod(pdtest_class,
+        (t_method)pdtest_start, gensym("start"),0);
+    class_addmethod(pdtest_class,
+        (t_method)pdtest_stop, gensym("stop"),0);
     
     class_sethelpsymbol(pdtest_class, gensym("pdtest-help"));
     
@@ -100,6 +123,9 @@ void *pdtest_new(void)
     
     x->canvas = canvas_getcurrent();
     pdtest_luasetup(x);
+    
+    x->async_run = 0;
+    x->async_clock = clock_new(x, (t_method)pdtest_run);
     
     inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("list"), gensym("result"));
     outlet_new(&x->x_obj, NULL);
@@ -119,7 +145,7 @@ void pdtest_suite(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
     if (argc < 1) {
         post("pdtest: at least one suite filepath needed"); return;
     }
-    
+    post("*** suite");
     int i;
     for (i = 0; i < argc; i++) {
         char filepath[256];
@@ -129,26 +155,123 @@ void pdtest_suite(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
         
         pdtest_lua_loadsuite(x, filestring);
     }
+    post("*** suite loaded...  starting!");
+    pdtest_start(x,gensym("suite"));
 }
 
 void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
 {
+    post("*** result");
   if (argc < 1) {
       post("pdtest: result is empty"); return;
   }
   
+  lua_getglobal(x->lua,"pdtest_errorHandler");
+  lua_getglobal(x->lua, "pdtest_result");
   lua_newtable(x->lua);
+  post("*** result table set");
+  int i;
   for (i = 0; i < argc; i++) {
       char result[256];
       atom_string(argv+i, result, 256);
       
       const char* resultS = (const char*)result;
-      lua_pushstring(x->lua,resultS)
       
+      char buff[50];
+      int ret;
+      ret = sprintf(buff, "%d", i);
+      const char* index = (const char*)buff;
       
+      lua_pushstring(x->lua,resultS);
+      lua_setfield(x->lua,-2,index);
   }
   
-  post("pdtest: posting results...");
+  int error = lua_pcall(x->lua, 1, 1, -3);
+  if (!error) {
+      if (lua_isboolean(x->lua,-1)) {
+          int again = lua_toboolean(x->lua,-1);
+          if (!again) {
+              pdtest_report(x);
+          }
+      }
+  }
+}
+
+/* pdtest scheduling methods */
+
+static void pdtest_run(t_pdtest *x)
+{
+    post("*** run");
+    pdtest_next(x);
+    pdtest_yield(x);
+    pdtest_schedule(x);
+}
+
+static void pdtest_next(t_pdtest * x)
+{
+    post("*** next");
+    lua_getglobal(x->lua,"pdtest_errorHandler");
+    lua_getglobal(x->lua, "pdtest_next");
+    if (!lua_isfunction(x->lua,-1)) {
+        post("*** gosh... no pdtest_next function!!!");
+        return;
+    }
+    post("*** passed func!!!");
+    int error = lua_pcall(x->lua, 0, 1, 0);
+    post("*** next error: %d", error);
+    post("*** run = %d; mem = %d; err = %d", LUA_ERRRUN, LUA_ERRMEM, LUA_ERRERR);
+    if (!error) {
+        if (lua_isboolean(x->lua,-1)) {
+            int doing = lua_toboolean(x->lua,-1);
+            if (!doing) {
+                post("*** next no action");
+            }
+        }
+    }
+}
+
+static void pdtest_yield(t_pdtest * x)
+{
+    lua_getglobal(x->lua,"pdtest_errorHandler");
+    lua_getglobal(x->lua, "pdtest_yield");
+    int error = lua_pcall(x->lua, 0, 1, -2);
+    if (!error) {
+        if (lua_isboolean(x->lua,-1)) {
+            int again = lua_toboolean(x->lua,-1);
+            if (!again) {
+                pdtest_stop(x, gensym("yield"));
+                pdtest_report(x);
+            }
+        }
+    }
+}
+
+static void pdtest_schedule(t_pdtest *x)
+{
+    post("*** schedule");
+    if (x->async_run) {
+        clock_delay(x->async_clock, 0);
+    } else {
+        clock_unset(x->async_clock);
+    }
+}
+
+void pdtest_start(t_pdtest *x, t_symbol *s)
+{
+    post("*** start");
+    if (!x->async_run) {
+      x->async_run = 1;
+      pdtest_schedule(x);
+    }
+}
+
+void pdtest_stop(t_pdtest *x, t_symbol *s)
+{
+    post("*** stop");
+    if (x->async_run) {
+      x->async_run = 0;
+      pdtest_schedule(x);
+    }
 }
 
 /*************************************************
@@ -166,12 +289,21 @@ void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, 1, "message");
     lua_pushcfunction(x->lua, luafunc_pdtest_error);
     lua_setfield(x->lua, 1, "error");
+    lua_pushcfunction(x->lua, luafunc_pdtest_post);
+    lua_setfield(x->lua, 1, "post");
     lua_setglobal(x->lua,"pdtest");
+    
+    lua_pushcfunction(x->lua, luafunc_pdtest_errorHandler);
+    lua_setglobal(x->lua,"pdtest_errorHandler");
     
     lua_pushlightuserdata(x->lua, x);
     lua_setglobal(x->lua,"pdtest_userdata");
     
     luaL_dostring(x->lua, pdtest_lua_init);
+    luaL_dostring(x->lua, pdtest_lua_next);
+    luaL_dostring(x->lua, pdtest_lua_yield);
+    luaL_dostring(x->lua, pdtest_lua_result);
+    luaL_dostring(x->lua, pdtest_lua_report);
 }
 
 /* State for the Lua file reader. */
@@ -211,7 +343,7 @@ void pdtest_lua_loadsuite(t_pdtest *x, const char *filename)
       close(fd);
       pd_error(x, "pdtest: error loading testfile `%s':\n%s", filename, lua_tostring(x->lua, -1));
     } else {
-      if (lua_pcall(x->lua, 0, LUA_MULTRET, 0)) {
+      if (lua_pcall(x->lua, 0, 1, 0)) {
         pd_error(x, "pdtest: error loading testfile `%s':\n%s", filename, lua_tostring(x->lua, -1));
         lua_pop(x->lua, 1);
         close(fd);
@@ -295,6 +427,21 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
   }
 }
 
+static void pdtest_report(t_pdtest *x)
+{
+    lua_getglobal(x->lua,"pdtest_errorHandler");
+    lua_getglobal(x->lua, "pdtest_report");
+    int error = lua_pcall(x->lua, 0, 1, -2);
+    if (!error) {
+        if (lua_isboolean(x->lua,-1)) {
+            int done = lua_toboolean(x->lua,-1);
+            if (!done) {
+                post("pdtest: postponing report as the queue is not empty...");
+                pdtest_start(x,gensym("report"));
+            }
+        }
+    }
+}
 
 /*************************************************
  *               Lua functions                   *
@@ -303,17 +450,20 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
 
 static int luafunc_pdtest_message(lua_State *lua)
 {
+    post("*** message");
     int count;
     t_atom *message = pdtest_lua_popatomtable(lua,&count);
     
     lua_getglobal(lua, "pdtest_userdata");
     if (lua_islightuserdata(lua,-1)) {
+      post("*** message to out");
       t_pdtest *x = lua_touserdata(lua,-1);
       outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);
     } else {
+      post("*** message userdata missing");
       error("pdtest: userdata missing from Lua stack");
     }
-    
+    post("*** message done!");
     return 1;
 }
 
@@ -329,6 +479,30 @@ static int luafunc_pdtest_error(lua_State *lua)
   return 0;
 }
 
+static int luafunc_pdtest_post(lua_State *lua)
+{
+  const char *s = luaL_checkstring(lua, 1);
+  if (s) {
+    post("pdtest: %s", s);
+  } else {
+    error("pdtest: error in posting pd post, no message string in Lua stack");
+  }
+  
+  return 0;
+}
+
+static int luafunc_pdtest_errorHandler(lua_State *lua)
+{
+    const char* err;
+    if (lua_isstring(lua,-1)) {
+        err = lua_tostring(lua,-1);
+    } else {
+        err = " ";
+    }
+    error("pdtest: lua error: %s", err);
+    return 1;
+}
+
 
 
 /*************************************************
@@ -336,41 +510,139 @@ static int luafunc_pdtest_error(lua_State *lua)
  *                                               *
  *************************************************/
 
-const char* pdtest_lua_init = ""
-  "pdtest.queue={}                                      "
-  "pdtest.results={}"
-  "pdtest.suite = function(suite)                        "
-  "  currentSuite = {name=suite, queue={}, results={}}               "
-  "  currentSuite.setup = function() end                 "
-  "  currentSuite.teardown = function() end              "
-  "                                                      "
-  "  currentSuite.case = function(case)                  "
-  "    currentCase = {name=case, queue={}, results={}}               "
-  "    currentCase.setup = function() end                "
-  "    currentCase.teardown = function() end             "
-  "                                                      "
-  "    currentCase.test = function(test)                 "
-  "      currentTest = {test=test}                       "
-  "                                                      "
-  "      currentTest.should = function(should)           "
-  "        currentTest.should = should                   "
-  "                                                      "
-  "        return currentCase                            "
-  "      end                                             "
-  "                                                      "
-  "      table.insert(currentCase.queue,currentTest)     "
-  "      return currentTest                              "
-  "    end                                               "
-  "                                                      "
-  "    table.insert(currentSuite.queue,currentCase)      "
-  "    return currentCase                                "
-  "  end                                                 "
-  "                                                      "
-  "  table.insert(pdtest.results,currentSuite)            "
-  "  return currentSuite                                 "
-  "end                                                   "
-  "pdtest.result = function(result)"
-  "  "
-  "end";
+const char* pdtest_lua_init = "\n"
+"pdtest.queue={}\n"
+"pdtest.dones={}\n"
+"pdtest.results={}\n"
+"pdtest.currents={}\n"
+"pdtest.try = 0;\n"
+"pdtest.suite = function(suite)\n"
+"  currentSuite = {name=suite, queue={}, dones={}}\n"
+"  currentSuite.setup = function() end\n"
+"  currentSuite.teardown = function() end\n"
+"  \n"
+"  currentSuite.case = function(case)\n"
+"    currentCase = {name=case, queue={}, dones={}}\n"
+"    currentCase.setup = function() end\n"
+"    currentCase.teardown = function() end\n"
+"    \n"
+"    currentCase.test = function(test)\n"
+"      currentTest = {test=test}\n"
+"      \n"
+"      currentTest.should = function(should)\n"
+"        currentTest.should = should\n"
+"        \n"
+"        return currentCase\n"
+"      end\n"
+"      \n"
+"      table.insert(currentCase.queue,currentTest)\n"
+"      return currentTest\n"
+"    end\n"
+"    \n"
+"    table.insert(currentSuite.queue,currentCase)\n"
+"    return currentCase\n"
+"  end\n"
+"  \n"
+"  table.insert(pdtest.queue,currentSuite)\n"
+"  return currentSuite\n"
+"end\n";
 
-  
+const char* pdtest_lua_next = "\n"
+"function pdtest_next()\n"
+"  pdtest.post(\"*** lua next\")\n"
+"  if table.getn(pdtest.queue) == 0 then\n"
+"    pdtest.post(\"*** lua next no suites\")\n"
+"    return false\n"
+"  elseif table.getn(pdtest.queue[1].queue) == 0 then\n"
+"    pdtest.post(\"*** lua next no cases\")\n"
+"    table.insert(pdtest.dones, table.remove(pdtest.queue,1))\n"
+"  elseif table.getn(pdtest.queue[1].queue[1].queue) == 0 then\n"
+"    pdtest.post(\"*** lua next no tests\")\n"
+"    table.insert(pdtest.queue[1].dones, table.remove(pdtest.queue[1].queue,1))\n"
+"  else\n"
+"    pdtest.post(\"*** lua next test\")\n"
+"    current = pdtest.queue[1].queue[1].queue[1]\n"
+"    if type(current.test) == \"function\" then\n"
+"      pdtest.post(\"*** lua next test function\")\n"
+"      current.test()\n"
+"    elseif type(current.test) == \"table\" then\n"
+"      pdtest.post(\"*** lua next test message\")\n"
+"      pdtest.message(current.test)\n"
+"    else\n"
+"      pdtest.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
+"    end\n"
+"    table.insert(pdtest.currents, current)\n"
+"    table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))\n"
+"  end\n"
+"  return true\n"
+"end\n";
+
+
+const char* pdtest_lua_result = "\n"
+"function pdtest_result(result)\n"
+"  pdtest.post(\"lua result\")\n"
+"  if type(result) == \"table\" then\n"
+"    pdtest.post(\"lua result table\")\n"
+"    table.insert(pdtest.results,result)\n"
+"  else\n"
+"    pdtest.error(\"wrong result type -- \"..type(result)..\" -- should have been table\")\n"
+"  end\n"
+"  return true\n"
+"end\n";
+
+const char* pdtest_lua_yield = "\n"
+"function pdtest_yield()\n"
+"  if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then\n"
+"    pdtest.post(\"lua yield\")\n"
+"    current = table.remove(pdtest.currents,1)\n"
+"    result = table.remove(pdtest.results,1)\n"
+"    current.result = result\n"
+"    if type(current.should) == \"function\" then\n"
+"      current.success = current.should(current.result)\n"
+"      if current.success then\n"
+"        pdtest.post(\": OK\")\n"
+"      else\n"
+"        pdtest.post(\": FAILED\")\n"
+"      end\n"
+"    else\n"
+"      pdtest.error(\"wrong should() data type -- \"..type(current.should)..\" -- should have been function\")\n"
+"    end\n"
+"    return true\n"
+"  elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then\n"
+"    return false\n"
+"  end\n"
+"end\n";
+
+const char* pdtest_lua_report = "\n"
+"function pdtest_report()\n"
+"  if table.getn(pdtest.currents) > 0 then\n"
+"    return false\n"
+"  else\n"
+"    pdtest.post(\"!!! Test Completed !!!\")\n"
+"    tests = 0\n"
+"    cases = 0\n"
+"    suites = 0\n"
+"    ok = 0\n"
+"    fail = 0\n"
+"    for si, suite in ipairs(pdtest.dones) do\n"
+"      suites = suites + 1\n"
+"      for ci, case in ipairs(suite.dones) do\n"
+"        cases = cases + 1\n"
+"        for ti, test in ipairs(case.dones) do\n"
+"          tests = tests + 1\n"
+"          if test.success then\n"
+"            ok = ok + 1\n"
+"          else\n"
+"            fail = fail + 1\n"
+"          end\n"
+"        end\n"
+"      end\n"
+"    end\n"
+"    pdtest.post(\"\"..suites..\" Suites | \"..cases..\" Cases | \"..tests..\" Tests\")\n"
+"    pdtest.post(\"\"..ok..\" tests passed\")\n"
+"    pdtest.post(\"\"..fail..\" tests failed\")\n"
+"  end\n"
+"  return true\n"
+"end\n";
+
+
