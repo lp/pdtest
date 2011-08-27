@@ -33,8 +33,8 @@ EXTRA_DIST =
 #------------------------------------------------------------------------------#
 
 # -I"$(PD_INCLUDE)/pd" supports the header location for 0.43
-CFLAGS = -I"$(PD_INCLUDE)/pd" -Wall -W -g $(LUAI) $(LUAL)
-LDFLAGS =  
+CFLAGS = -I"$(PD_INCLUDE)/pd" -Wall -W -g $(LUAI)
+LDFLAGS = $(LUAL)
 LIBS = 
 
 # Lua setup
@@ -114,7 +114,7 @@ ifeq ($(UNAME),Darwin)
       FAT_FLAGS = -arch i386 -mmacosx-version-min=10.4
       SOURCES += $(SOURCES_iphoneos)
     endif
-    CFLAGS += $(FAT_FLAGS) -fPIC -I/sw/include
+    CFLAGS += $(FAT_FLAGS) -fPIC -I/sw/include 
     LDFLAGS += $(FAT_FLAGS) -bundle -undefined dynamic_lookup -L/sw/lib
 	LUACFLAGS = $(FAT_FLAGS)
     # if the 'pd' binary exists, check the linking against it to aid with stripping
