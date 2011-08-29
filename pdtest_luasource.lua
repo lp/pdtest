@@ -9,21 +9,52 @@ pdtest.currents={}
 pdtest.try = 0;
 pdtest.suite = function(suite)
   currentSuite = {name=suite, queue={}, dones={}}
-  currentSuite.setup = function() end
-  currentSuite.teardown = function() end
   
   currentSuite.case = function(case)
     currentCase = {name=case, queue={}, dones={}}
-    currentCase.setup = function() end
-    currentCase.teardown = function() end
+    
+    currentCase.before = function() end
+    currentCase.after = function() end
+    currentCase.setup = function(setup)
+      if type(setup) == "function" then
+        currentCase.before = setup
+        return currentCase
+      end
+    end
+    currentCase.teardown = function(teardown)
+      if type(teardown) == "function" then
+        currentCase.after = teardown
+        return currentCase
+      end
+    end
     
     currentCase.test = function(test)
-      currentTest = {test=test}
+      currentTest = {test=test, case=currentCase}
       
-      currentTest.should = function(should)
-        currentTest.should = should
+      currentTest.should = function()
+        cmpmet = {}
+        cmpmet.equal = function(should)
+          currentTest.try = function(result)
+            if type(should) == "table" and type(result) == "table" then
+              same = true
+              for i,v in ipairs(should) do
+                if v ~= result[i] then
+                  same = false
+                end
+              end
+              if same then
+                return true, ""..table.concat(should, ", ").." is equal to "..table.concat(result,", ")..""
+              else
+                return false, ""..table.concat(should, ", ").." is not equal to "..table.concat(result,", ")..""
+              end
+            else
+              return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
+            end
+          end
+          return currentTest
+        end
         
-        return currentCase
+        return cmpmet
       end
       
       table.insert(currentCase.queue,currentTest)
@@ -52,6 +83,7 @@ function pdtest_next()
   else
     pdtest.post("*** lua next test")
     current = pdtest.queue[1].queue[1].queue[1]
+    current.case.setup()
     if type(current.test) == "function" then
       pdtest.post("*** lua next test function")
       current.test()
@@ -61,39 +93,24 @@ function pdtest_next()
     else
       pdtest.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
     end
+    current.case.teardown()
     table.insert(pdtest.currents, current)
     table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))
   end
   return true
 end
 
-
-function pdtest_result(result)
-  pdtest.post("lua result")
-  if type(result) == "table" then
-    pdtest.post("lua result table")
-    table.insert(pdtest.results,result)
-  else
-    pdtest.error("wrong result type -- "..type(result).." -- should have been table")
-  end
-  return true
-end
-
 function pdtest_yield()
+  pdtest.post("lua yield")
   if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then
-    pdtest.post("lua yield")
     current = table.remove(pdtest.currents,1)
     result = table.remove(pdtest.results,1)
     current.result = result
-    if type(current.should) == "function" then
-      current.success = current.should(current.result)
-      if current.success then
-        pdtest.post(": OK")
-      else
-        pdtest.post(": FAILED")
-      end
+    current.success, current.detail = current.try(current.result)
+    if current.success then
+      pdtest.post("-OK")
     else
-      pdtest.error("wrong should() data type -- "..type(current.should).." -- should have been function")
+      pdtest.post("-FAILED: "..current.detail)
     end
     return true
   elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then
