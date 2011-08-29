@@ -5,6 +5,21 @@ pdtest = {}
 pdtest.suite = function(suite)
   currentSuite = {name=suite, queue={}, dones={}}
   
+  currentSuite.before = function() end
+  currentSuite.after = function() end
+  currentSuite.setup = function(setup)
+    if type(setup) == "function" then
+      currentSuite.before = setup
+      return currentSuite
+    end
+  end
+  currentSuite.teardown = function(teardown)
+    if type(teardown) == "function" then
+      currentSuite.after = teardown
+      return currentSuite
+    end
+  end
+  
   currentSuite.case = function(case)
     currentCase = {name=case, queue={}, dones={}}
     
@@ -24,7 +39,7 @@ pdtest.suite = function(suite)
     end
     
     currentCase.test = function(test)
-      currentTest = {test=test, case=currentCase}
+      currentTest = {test=test, suite=currentSuite, case=currentCase}
       
       currentTest.should = function()
         cmpmet = {}
@@ -78,6 +93,7 @@ function pdtest_next()
   else
     pdtest.post("*** lua next test")
     current = pdtest.queue[1].queue[1].queue[1]
+    current.suite.before()
     current.case.before()
     if type(current.test) == "function" then
       pdtest.post("*** lua next test function")
@@ -88,6 +104,7 @@ function pdtest_next()
     else
       pdtest.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
     end
+    current.suite.after()
     current.case.after()
     table.insert(pdtest.currents, current)
     table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))
@@ -144,4 +161,3 @@ function pdtest_report()
   end
   return true
 end
-

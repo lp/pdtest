@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 /* Lua headers */
 #include <lua.h>
@@ -50,7 +51,6 @@ typedef struct pdtest
   int async_num;
   int async_run;
   t_clock  *async_clock;
-  int skip;
 } t_pdtest;
 
 /* Declarations */
@@ -79,6 +79,8 @@ static const char *pdtest_lua_reader(lua_State *lua, void *rr, size_t *size);
 void pdtest_lua_loadsuite(t_pdtest *x, const char *filename);
 static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count);
 static void pdtest_report(t_pdtest *x);
+static int is_rawmessage(t_pdtest *x);
+static void reg_message(t_pdtest *x, int israw);
 
 /* Lua functions */
 static int luafunc_pdtest_message(lua_State *lua);
@@ -86,6 +88,8 @@ static int luafunc_pdtest_raw_message(lua_State *lua);
 static int luafunc_pdtest_error(lua_State *lua);
 static int luafunc_pdtest_post(lua_State *lua);
 static int luafunc_pdtest_errorHandler(lua_State *lua);
+static int luafunc_pdtest_register(lua_State *lua);
+static int luafunc_pdtest_unregister(lua_State *lua);
 
 /* Lua source code */
 const char* pdtest_lua_init;
@@ -118,10 +122,20 @@ void pdtest_setup(void)
     
     post("pdtest %i.%i.%i (MIT) 2011 Louis-Philippe Perron <lp@spiralix.org>", PDTEST_MAJOR, PDTEST_MINOR, PDTEST_PATCH);
     post("pdtest: compiled for pd-%d.%d on %s %s", PD_MAJOR_VERSION, PD_MINOR_VERSION, __DATE__, __TIME__);
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    post("pdtest: time sec %d usec %d logical %0.7f", tv.tv_sec, tv.tv_usec, clock_getlogicaltime());
+    gettimeofday(&tv,NULL);
+    post("pdtest: time sec %d usec %d logical %0.7f", tv.tv_sec, tv.tv_usec, clock_getlogicaltime());
+    gettimeofday(&tv,NULL);
+    post("pdtest: time sec %d usec %d logical %0.7f", tv.tv_sec, tv.tv_usec, clock_getlogicaltime());
 }
 
 void *pdtest_new(void)
 {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    post("pdtest: time sec %d usec %d logical %0.7f", tv.tv_sec, tv.tv_usec, clock_getlogicaltime());
     t_pdtest *x = NULL;
     x = (t_pdtest*)pd_new(pdtest_class);
     
@@ -130,7 +144,6 @@ void *pdtest_new(void)
     
     x->async_run = 0;
     x->async_clock = clock_new(x, (t_method)pdtest_run);
-    x->skip = 0;
     
     inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("list"), gensym("result"));
     outlet_new(&x->x_obj, NULL);
@@ -171,8 +184,8 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
       post("pdtest: result is empty"); return;
   }
   
-  if (x->skip > 0) {
-      x->skip = x->skip - 1; return;
+  if (is_rawmessage(x)) {
+      return;
   }
   
   lua_getglobal(x->lua, "pdtest");
@@ -306,6 +319,10 @@ void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "error");
     lua_pushcfunction(x->lua, luafunc_pdtest_post);
     lua_setfield(x->lua, -2, "post");
+    lua_pushcfunction(x->lua, luafunc_pdtest_register);
+    lua_setfield(x->lua, -2, "register");
+    lua_pushcfunction(x->lua, luafunc_pdtest_unregister);
+    lua_setfield(x->lua, -2, "unregister");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "queue");
     lua_newtable(x->lua);
@@ -314,6 +331,8 @@ void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "results");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "currents");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "reg");
     lua_setglobal(x->lua,"pdtest");
     
     lua_pushcfunction(x->lua, luafunc_pdtest_errorHandler);
@@ -465,6 +484,39 @@ static void pdtest_report(t_pdtest *x)
     }
 }
 
+static int is_rawmessage(t_pdtest *x)
+{
+    lua_getglobal(x->lua,"pdtest_errorHandler");
+    lua_getglobal(x->lua,"pdtest");
+    lua_getfield(x->lua, -1, "unregister");
+    lua_pcall(x->lua, 0,1,-3);
+    
+    if (lua_isboolean(x->lua,-1)) {
+        return lua_toboolean(x->lua,-1);
+    } else if (lua_istable(x->lua,-1)) {
+        error("pdtest unregister did return a table???...");
+        return -1;
+    } else if (lua_isnumber(x->lua,-1)) {
+        error("pdtest unregister did return a number???...");
+        return -1;
+    } else if (lua_isnil(x->lua,-1)) {
+        error("pdtest unregister did return a nil???...");
+        return -1;
+    } else {
+        error("pdtest unregister didn't return a bool...");
+        return -1;
+    }
+}
+
+static void reg_message(t_pdtest *x, int israw)
+{
+    lua_getglobal(x->lua,"pdtest_errorHandler");
+    lua_getglobal(x->lua,"pdtest");
+    lua_getfield(x->lua, -1, "register");
+    lua_pushboolean(x->lua, israw);
+    lua_pcall(x->lua,1,0,-4);
+}
+
 /*************************************************
  *               Lua functions                   *
  *                                               *
@@ -480,6 +532,7 @@ static int luafunc_pdtest_message(lua_State *lua)
     if (lua_islightuserdata(lua,-1)) {
       post("*** message to out");
       t_pdtest *x = lua_touserdata(lua,-1);
+      reg_message(x,0);
       outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);
     } else {
       post("*** message userdata missing");
@@ -491,21 +544,17 @@ static int luafunc_pdtest_message(lua_State *lua)
 
 static int luafunc_pdtest_raw_message(lua_State *lua)
 {
-    post("*** rawmessage");
     int count;
     t_atom *message = pdtest_lua_popatomtable(lua,&count);
     
     lua_getglobal(lua, "pdtest_userdata");
     if (lua_islightuserdata(lua,-1)) {
-      post("*** rawmessage to out");
       t_pdtest *x = lua_touserdata(lua,-1);
-      x->skip = x->skip + 1;
+      reg_message(x,1);
       outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);
     } else {
-      post("*** rawmessage userdata missing");
       error("pdtest: userdata missing from Lua stack");
     }
-    post("*** rawmessage done!");
     return 1;
 }
 
@@ -545,7 +594,45 @@ static int luafunc_pdtest_errorHandler(lua_State *lua)
     return 1;
 }
 
+static int luafunc_pdtest_register(lua_State *lua)
+{
+    lua_getglobal(lua,"pdtest");
+    lua_getfield(lua, -1, "reg");
+    int n = luaL_getn(lua,-1);
+    lua_insert(lua,-3);
+    lua_pop(lua,1);
+    
+    lua_rawseti(lua,-2,n+1);
+    lua_pop(lua,1);
+    return 0;
+}
 
+static int luafunc_pdtest_unregister(lua_State *lua)
+{
+    lua_getglobal(lua,"pdtest");
+    lua_getfield(lua, -1, "reg");
+    int n = luaL_getn(lua,-1);
+    if (n == 0) {
+        error("pdtest: unregistering on an empty queue?");
+        lua_pushnil(lua);
+        return 1;
+    }
+    luaL_setn(lua, -2, n-1);
+    
+    int pos = 1;
+    lua_rawgeti(lua,-1,pos);
+    for ( ;pos<n;pos++) {
+        lua_rawgeti(lua, -2, pos+1);
+        lua_rawseti(lua, -3, pos);
+    }
+    lua_pushnil(lua);
+    lua_rawseti(lua, -3, n);
+    
+    lua_remove(lua, -3);
+    lua_remove(lua, -2);
+    
+    return 1;
+}
 
 /*************************************************
  *               Lua Source Code                 *
@@ -555,6 +642,21 @@ static int luafunc_pdtest_errorHandler(lua_State *lua)
 const char* pdtest_lua_init = "\n"
 "pdtest.suite = function(suite)\n"
 "  currentSuite = {name=suite, queue={}, dones={}}\n"
+"  \n"
+"  currentSuite.before = function() end\n"
+"  currentSuite.after = function() end\n"
+"  currentSuite.setup = function(setup)\n"
+"    if type(setup) == \"function\" then\n"
+"      currentSuite.before = setup\n"
+"      return currentSuite\n"
+"    end\n"
+"  end\n"
+"  currentSuite.teardown = function(teardown)\n"
+"    if type(teardown) == \"function\" then\n"
+"      currentSuite.after = teardown\n"
+"      return currentSuite\n"
+"    end\n"
+"  end\n"
 "  \n"
 "  currentSuite.case = function(case)\n"
 "    currentCase = {name=case, queue={}, dones={}}\n"
@@ -575,7 +677,7 @@ const char* pdtest_lua_init = "\n"
 "    end\n"
 "    \n"
 "    currentCase.test = function(test)\n"
-"      currentTest = {test=test, case=currentCase}\n"
+"      currentTest = {test=test, suite=currentSuite, case=currentCase}\n"
 "      \n"
 "      currentTest.should = function()\n"
 "        cmpmet = {}\n"
@@ -630,6 +732,7 @@ const char* pdtest_lua_next = "\n"
 "  else\n"
 "    pdtest.post(\"*** lua next test\")\n"
 "    current = pdtest.queue[1].queue[1].queue[1]\n"
+"    current.suite.before()\n"
 "    current.case.before()\n"
 "    if type(current.test) == \"function\" then\n"
 "      pdtest.post(\"*** lua next test function\")\n"
@@ -640,6 +743,7 @@ const char* pdtest_lua_next = "\n"
 "    else\n"
 "      pdtest.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
 "    end\n"
+"    current.suite.after()\n"
 "    current.case.after()\n"
 "    table.insert(pdtest.currents, current)\n"
 "    table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))\n"
