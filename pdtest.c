@@ -87,7 +87,6 @@ static int luafunc_pdtest_errorHandler(lua_State *lua);
 /* Lua source code */
 const char* pdtest_lua_init;
 const char* pdtest_lua_next;
-const char* pdtest_lua_result;
 const char* pdtest_lua_yield;
 const char* pdtest_lua_report;
 
@@ -166,35 +165,26 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
       post("pdtest: result is empty"); return;
   }
   
-  lua_getglobal(x->lua,"pdtest_errorHandler");
-  lua_getglobal(x->lua, "pdtest_result");
+  lua_getglobal(x->lua, "pdtest");
+  lua_getfield(x->lua, -1, "results");
+  int n = luaL_getn(x->lua,-1);
+  
   lua_newtable(x->lua);
   post("*** result table set");
   int i;
   for (i = 0; i < argc; i++) {
       char result[256];
       atom_string(argv+i, result, 256);
-      
       const char* resultS = (const char*)result;
       
-      char buff[50];
-      int ret;
-      ret = sprintf(buff, "%d", i);
-      const char* index = (const char*)buff;
-      
-      lua_pushstring(x->lua,resultS);
-      lua_setfield(x->lua,-2,index);
-  }
-  
-  int error = lua_pcall(x->lua, 1, 1, -3);
-  if (!error) {
-      if (lua_isboolean(x->lua,-1)) {
-          int again = lua_toboolean(x->lua,-1);
-          if (!again) {
-              pdtest_report(x);
-          }
+      if (!i == 0) {
+          lua_pushstring(x->lua,resultS);
+          lua_rawseti(x->lua,-2,i);
+          
+          post("*** result table + %s at index: %d",resultS, i);
       }
   }
+  lua_rawseti(x->lua,-2,n+1);
 }
 
 /* pdtest scheduling methods */
@@ -302,7 +292,6 @@ void pdtest_luasetup(t_pdtest *x)
     luaL_dostring(x->lua, pdtest_lua_init);
     luaL_dostring(x->lua, pdtest_lua_next);
     luaL_dostring(x->lua, pdtest_lua_yield);
-    luaL_dostring(x->lua, pdtest_lua_result);
     luaL_dostring(x->lua, pdtest_lua_report);
 }
 
@@ -518,21 +507,52 @@ const char* pdtest_lua_init = "\n"
 "pdtest.try = 0;\n"
 "pdtest.suite = function(suite)\n"
 "  currentSuite = {name=suite, queue={}, dones={}}\n"
-"  currentSuite.setup = function() end\n"
-"  currentSuite.teardown = function() end\n"
 "  \n"
 "  currentSuite.case = function(case)\n"
 "    currentCase = {name=case, queue={}, dones={}}\n"
-"    currentCase.setup = function() end\n"
-"    currentCase.teardown = function() end\n"
+"    \n"
+"    currentCase.before = function() end\n"
+"    currentCase.after = function() end\n"
+"    currentCase.setup = function(setup)\n"
+"      if type(setup) == \"function\" then\n"
+"        currentCase.before = setup\n"
+"        return currentCase\n"
+"      end\n"
+"    end\n"
+"    currentCase.teardown = function(teardown)\n"
+"      if type(teardown) == \"function\" then\n"
+"        currentCase.after = teardown\n"
+"        return currentCase\n"
+"      end\n"
+"    end\n"
 "    \n"
 "    currentCase.test = function(test)\n"
-"      currentTest = {test=test}\n"
+"      currentTest = {test=test, case=currentCase}\n"
 "      \n"
-"      currentTest.should = function(should)\n"
-"        currentTest.should = should\n"
+"      currentTest.should = function()\n"
+"        cmpmet = {}\n"
+"        cmpmet.equal = function(should)\n"
+"          currentTest.try = function(result)\n"
+"            if type(should) == \"table\" and type(result) == \"table\" then\n"
+"              same = true\n"
+"              for i,v in ipairs(should) do\n"
+"                if v ~= result[i] then\n"
+"                  same = false\n"
+"                end\n"
+"              end\n"
+"              if same then\n"
+"                return true, \"\"..table.concat(should, \", \")..\" is equal to \"..table.concat(result,\", \")..\"\"\n"
+"              else\n"
+"                return false, \"\"..table.concat(should, \", \")..\" is not equal to \"..table.concat(result,\", \")..\"\"\n"
+"              end\n"
+"            else\n"
+"              return false, \"Comparison data needs to be tables: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
+"            end\n"
+"          end\n"
+"          return currentTest\n"
+"        end\n"
 "        \n"
-"        return currentCase\n"
+"        return cmpmet\n"
 "      end\n"
 "      \n"
 "      table.insert(currentCase.queue,currentTest)\n"
@@ -562,6 +582,7 @@ const char* pdtest_lua_next = "\n"
 "  else\n"
 "    pdtest.post(\"*** lua next test\")\n"
 "    current = pdtest.queue[1].queue[1].queue[1]\n"
+"    current.case.setup()\n"
 "    if type(current.test) == \"function\" then\n"
 "      pdtest.post(\"*** lua next test function\")\n"
 "      current.test()\n"
@@ -571,41 +592,25 @@ const char* pdtest_lua_next = "\n"
 "    else\n"
 "      pdtest.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
 "    end\n"
+"    current.case.teardown()\n"
 "    table.insert(pdtest.currents, current)\n"
 "    table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))\n"
 "  end\n"
 "  return true\n"
 "end\n";
 
-
-const char* pdtest_lua_result = "\n"
-"function pdtest_result(result)\n"
-"  pdtest.post(\"lua result\")\n"
-"  if type(result) == \"table\" then\n"
-"    pdtest.post(\"lua result table\")\n"
-"    table.insert(pdtest.results,result)\n"
-"  else\n"
-"    pdtest.error(\"wrong result type -- \"..type(result)..\" -- should have been table\")\n"
-"  end\n"
-"  return true\n"
-"end\n";
-
 const char* pdtest_lua_yield = "\n"
 "function pdtest_yield()\n"
+"  pdtest.post(\"lua yield\")\n"
 "  if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then\n"
-"    pdtest.post(\"lua yield\")\n"
 "    current = table.remove(pdtest.currents,1)\n"
 "    result = table.remove(pdtest.results,1)\n"
 "    current.result = result\n"
-"    if type(current.should) == \"function\" then\n"
-"      current.success = current.should(current.result)\n"
-"      if current.success then\n"
-"        pdtest.post(\": OK\")\n"
-"      else\n"
-"        pdtest.post(\": FAILED\")\n"
-"      end\n"
+"    current.success, current.detail = current.try(current.result)\n"
+"    if current.success then\n"
+"      pdtest.post(\"-OK\")\n"
 "    else\n"
-"      pdtest.error(\"wrong should() data type -- \"..type(current.should)..\" -- should have been function\")\n"
+"      pdtest.post(\"-FAILED: \"..current.detail)\n"
 "    end\n"
 "    return true\n"
 "  elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then\n"
