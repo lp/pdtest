@@ -2,11 +2,6 @@
 pdtest = {}
 
 -- pdtest_init
-pdtest.queue={}
-pdtest.dones={}
-pdtest.results={}
-pdtest.currents={}
-pdtest.try = 0;
 pdtest.suite = function(suite)
   currentSuite = {name=suite, queue={}, dones={}}
   
@@ -83,7 +78,7 @@ function pdtest_next()
   else
     pdtest.post("*** lua next test")
     current = pdtest.queue[1].queue[1].queue[1]
-    current.case.setup()
+    current.case.before()
     if type(current.test) == "function" then
       pdtest.post("*** lua next test function")
       current.test()
@@ -93,7 +88,7 @@ function pdtest_next()
     else
       pdtest.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
     end
-    current.case.teardown()
+    current.case.after()
     table.insert(pdtest.currents, current)
     table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))
   end

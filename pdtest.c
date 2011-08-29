@@ -50,6 +50,7 @@ typedef struct pdtest
   int async_num;
   int async_run;
   t_clock  *async_clock;
+  int skip;
 } t_pdtest;
 
 /* Declarations */
@@ -62,14 +63,15 @@ void pdtest_free(t_pdtest *x);
 /* pdtest inlets methods */
 void pdtest_suite(t_pdtest *x, t_symbol *s, int argc, t_atom *argv);
 void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv);
+void pdtest_start(t_pdtest *x, t_symbol *s);
+void pdtest_stop(t_pdtest *x, t_symbol *s);
+void pdtest_reset(t_pdtest *x, t_symbol *s);
 
 /* pdtest scheduler method */
 static void pdtest_run(t_pdtest *x);
 static void pdtest_next(t_pdtest * x);
 static void pdtest_yield(t_pdtest * x);
 static void pdtest_schedule(t_pdtest *x);
-void pdtest_start(t_pdtest *x, t_symbol *s);
-void pdtest_stop(t_pdtest *x, t_symbol *s);
 
 /* helper functions */
 void pdtest_luasetup(t_pdtest *x);
@@ -80,6 +82,7 @@ static void pdtest_report(t_pdtest *x);
 
 /* Lua functions */
 static int luafunc_pdtest_message(lua_State *lua);
+static int luafunc_pdtest_raw_message(lua_State *lua);
 static int luafunc_pdtest_error(lua_State *lua);
 static int luafunc_pdtest_post(lua_State *lua);
 static int luafunc_pdtest_errorHandler(lua_State *lua);
@@ -108,6 +111,8 @@ void pdtest_setup(void)
         (t_method)pdtest_start, gensym("start"),0);
     class_addmethod(pdtest_class,
         (t_method)pdtest_stop, gensym("stop"),0);
+    class_addmethod(pdtest_class,
+        (t_method)pdtest_reset, gensym("reset"),0);
     
     class_sethelpsymbol(pdtest_class, gensym("pdtest-help"));
     
@@ -125,6 +130,7 @@ void *pdtest_new(void)
     
     x->async_run = 0;
     x->async_clock = clock_new(x, (t_method)pdtest_run);
+    x->skip = 0;
     
     inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("list"), gensym("result"));
     outlet_new(&x->x_obj, NULL);
@@ -165,6 +171,10 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
       post("pdtest: result is empty"); return;
   }
   
+  if (x->skip > 0) {
+      x->skip = x->skip - 1; return;
+  }
+  
   lua_getglobal(x->lua, "pdtest");
   lua_getfield(x->lua, -1, "results");
   int n = luaL_getn(x->lua,-1);
@@ -185,6 +195,37 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
       }
   }
   lua_rawseti(x->lua,-2,n+1);
+}
+
+void pdtest_start(t_pdtest *x, t_symbol *s)
+{
+    post("*** start");
+    if (!x->async_run) {
+      x->async_run = 1;
+      pdtest_schedule(x);
+    }
+}
+
+void pdtest_stop(t_pdtest *x, t_symbol *s)
+{
+    post("*** stop");
+    if (x->async_run) {
+      x->async_run = 0;
+      pdtest_schedule(x);
+    }
+}
+
+void pdtest_reset(t_pdtest *x, t_symbol *s)
+{
+    lua_getglobal(x->lua,"pdtest");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "queue");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "dones");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "results");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "currents");
 }
 
 /* pdtest scheduling methods */
@@ -246,24 +287,6 @@ static void pdtest_schedule(t_pdtest *x)
     }
 }
 
-void pdtest_start(t_pdtest *x, t_symbol *s)
-{
-    post("*** start");
-    if (!x->async_run) {
-      x->async_run = 1;
-      pdtest_schedule(x);
-    }
-}
-
-void pdtest_stop(t_pdtest *x, t_symbol *s)
-{
-    post("*** stop");
-    if (x->async_run) {
-      x->async_run = 0;
-      pdtest_schedule(x);
-    }
-}
-
 /*************************************************
  *               Helper functions                *
  *                                               *
@@ -276,11 +299,21 @@ void pdtest_luasetup(t_pdtest *x)
     
     lua_newtable(x->lua);
     lua_pushcfunction(x->lua, luafunc_pdtest_message);
-    lua_setfield(x->lua, 1, "message");
+    lua_setfield(x->lua, -2, "message");
+    lua_pushcfunction(x->lua, luafunc_pdtest_raw_message);
+    lua_setfield(x->lua, -2, "raw_message");
     lua_pushcfunction(x->lua, luafunc_pdtest_error);
-    lua_setfield(x->lua, 1, "error");
+    lua_setfield(x->lua, -2, "error");
     lua_pushcfunction(x->lua, luafunc_pdtest_post);
-    lua_setfield(x->lua, 1, "post");
+    lua_setfield(x->lua, -2, "post");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "queue");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "dones");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "results");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "currents");
     lua_setglobal(x->lua,"pdtest");
     
     lua_pushcfunction(x->lua, luafunc_pdtest_errorHandler);
@@ -456,6 +489,26 @@ static int luafunc_pdtest_message(lua_State *lua)
     return 1;
 }
 
+static int luafunc_pdtest_raw_message(lua_State *lua)
+{
+    post("*** rawmessage");
+    int count;
+    t_atom *message = pdtest_lua_popatomtable(lua,&count);
+    
+    lua_getglobal(lua, "pdtest_userdata");
+    if (lua_islightuserdata(lua,-1)) {
+      post("*** rawmessage to out");
+      t_pdtest *x = lua_touserdata(lua,-1);
+      x->skip = x->skip + 1;
+      outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);
+    } else {
+      post("*** rawmessage userdata missing");
+      error("pdtest: userdata missing from Lua stack");
+    }
+    post("*** rawmessage done!");
+    return 1;
+}
+
 static int luafunc_pdtest_error(lua_State *lua)
 {
   const char *s = luaL_checkstring(lua, 1);
@@ -500,11 +553,6 @@ static int luafunc_pdtest_errorHandler(lua_State *lua)
  *************************************************/
 
 const char* pdtest_lua_init = "\n"
-"pdtest.queue={}\n"
-"pdtest.dones={}\n"
-"pdtest.results={}\n"
-"pdtest.currents={}\n"
-"pdtest.try = 0;\n"
 "pdtest.suite = function(suite)\n"
 "  currentSuite = {name=suite, queue={}, dones={}}\n"
 "  \n"
@@ -582,7 +630,7 @@ const char* pdtest_lua_next = "\n"
 "  else\n"
 "    pdtest.post(\"*** lua next test\")\n"
 "    current = pdtest.queue[1].queue[1].queue[1]\n"
-"    current.case.setup()\n"
+"    current.case.before()\n"
 "    if type(current.test) == \"function\" then\n"
 "      pdtest.post(\"*** lua next test function\")\n"
 "      current.test()\n"
@@ -592,7 +640,7 @@ const char* pdtest_lua_next = "\n"
 "    else\n"
 "      pdtest.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
 "    end\n"
-"    current.case.teardown()\n"
+"    current.case.after()\n"
 "    table.insert(pdtest.currents, current)\n"
 "    table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))\n"
 "  end\n"
