@@ -80,26 +80,19 @@ pdtest.suite = function(suite)
 end
 
 function pdtest_next()
-  pdtest.post("*** lua next")
   if table.getn(pdtest.queue) == 0 then
-    pdtest.post("*** lua next no suites")
     return false
   elseif table.getn(pdtest.queue[1].queue) == 0 then
-    pdtest.post("*** lua next no cases")
     table.insert(pdtest.dones, table.remove(pdtest.queue,1))
   elseif table.getn(pdtest.queue[1].queue[1].queue) == 0 then
-    pdtest.post("*** lua next no tests")
     table.insert(pdtest.queue[1].dones, table.remove(pdtest.queue[1].queue,1))
   else
-    pdtest.post("*** lua next test")
     current = pdtest.queue[1].queue[1].queue[1]
     current.suite.before()
     current.case.before()
     if type(current.test) == "function" then
-      pdtest.post("*** lua next test function")
       current.test()
     elseif type(current.test) == "table" then
-      pdtest.post("*** lua next test message")
       pdtest.message(current.test)
     else
       pdtest.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
@@ -113,23 +106,22 @@ function pdtest_next()
 end
 
 function pdtest_yield()
-  pdtest.post("lua yield")
   if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then
     current = table.remove(pdtest.currents,1)
     result = table.remove(pdtest.results,1)
     current.result = result
     current.success, current.detail = current.try(current.result)
+    nametag = ""..current.suite.name.." -> "..current.case.name
     if current.success then
-      pdtest.post("-OK")
+      pdtest.post(nametag.." |> OK")
     else
-      pdtest.post("-FAILED: "..current.detail)
+      pdtest.post(nametag.." |> FAILED"..current.detail)
     end
     return true
   elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then
     return false
   end
 end
-
 
 function pdtest_report()
   if table.getn(pdtest.currents) > 0 then
