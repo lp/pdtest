@@ -69,7 +69,11 @@ pdtest.suite = function(suite)
               end
             end
           elseif type(should) == "string" and type(result) == "table" then
-            same = should == result[1]
+            if table.getn(result) == 1 then
+              same = should == result[1]
+            else
+              same = false
+            end
           else
             return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
           end
