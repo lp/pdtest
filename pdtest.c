@@ -37,7 +37,7 @@ THE SOFTWARE.
 #include "m_pd.h"
 
 #define PDTEST_MAJOR 0
-#define PDTEST_MINOR 3
+#define PDTEST_MINOR 4
 #define PDTEST_PATCH 0
 #define PD_MAJOR_VERSION 0
 #define PD_MINOR_VERSION 42
