@@ -60,7 +60,64 @@ bc. .should:equal(                                      -- equal method test for
     {"TEST","DESIRED","OUTPUT","MESSAGE"})
 .should.nt:equal(                                       -- not equal method
     {"TEST","DESIRED","OUTPUT","MESSAGE"})
+.should:match("%d+%s%a+")                               -- match method matches individual result atoms
+                                                        -- against string pattern according to "lua's matching":http://www.lua.org/pil/20.2.html
+                                                        -- mechanism.
+.should.nt:match("%d+%s%a+")                            -- not match method
 
 h3. Example Tests Suite
 
-bc. 
+!https://github.com/lp/pdtest/raw/master/img/pdtest_example.png!
+
+h5. examplesuite.lua
+
+bc. mysuite = pdtest.suite("TestSuite") -- initializing a new test suite named "TestSuite"
+
+mysuite.setup(function()                -- called before every test in the suite
+  pdtest.raw_message({"command","flushdb"})
+end)
+
+mysuite.teardown(function()             -- called after every test in the suite
+  pdtest.raw_message({"command","flushdb"})
+end)
+
+mysuite.case("Server Info"              -- new test case named "Server Info"
+  ).test({"command", "INFO"}            -- will output message "list command INFO"
+    ).should:match("^redis_version")    -- test will pass if result received on right 
+                                        -- inlet starts with the string "redis_version"
+
+mysuite.case("Reality Check"            -- second test case named "Reality Check"
+  ).test({"command", "dummy"}           -- will output message "list command dummy"
+    ).should:match("ERR"                -- test will pass if result received on right
+  ).test({"command", "dbsize"}          -- inlet match the string "ERR"
+    ).should.nt:match("ERR")            -- second test will pass if result doesn't match "ERR"
+
+mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
+
+mycase.setup(                           -- called before every test in the case
+  function() pdtest.raw_message({"command","SET","FOO","BAR"})
+end)
+
+mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "BAR"
+  ).should:equal({"BAR"})
+
+mycase.test(function()                  -- here a test function is passed instead
+  pdtest.raw_message({"command","DEL","FOO"})
+  pdtest.message({"command","EXISTS","FOO"})
+end).should:equal("0")                  -- equal is passed a string, when result list
+                                        -- contains only one member
+
+h5. pd console
+
+bc. pdtest: loading testfile examplesuite.lua
+pdtest: TestSuite -> Server Info < command, INFO >  |> OK
+pdtest: TestSuite -> Reality Check < command, dummy >  |> OK
+pdtest: TestSuite -> Reality Check < command, dbsize >  |> OK
+pdtest: TestSuite -> Basic tests < command, GET, FOO >  |> OK
+pdtest: TestSuite -> Basic tests < function >  |> OK
+pdtest: !!! Test Completed !!!
+pdtest: 1 Suites | 3 Cases | 5 Tests
+pdtest: 5 tests passed
+pdtest: 0 tests failed
+
+
