@@ -43,17 +43,18 @@ pdtest.suite = function(suite)
       
       cmpmet = {}
       cmpmet.report = function(self,okmsg,failmsg,success,should,result)
+        if type(should) == "table" then should = table.concat(should, ", ") end
         if self.invert then
           if success then
-            return false, ""..table.concat(should, ", ")..okmsg..table.concat(result,", ")..""
+            return false, ""..table.concat(result,", ")..okmsg..should..""
           else
-            return true, ""..table.concat(should, ", ")..failmsg..table.concat(result,", ")..""
+            return true, ""..table.concat(result,", ")..failmsg..should..""
           end
         else
           if success then
-            return true, ""..table.concat(should, ", ")..okmsg..table.concat(result,", ")..""
+            return true, ""..table.concat(result,", ")..okmsg..should..""
           else
-            return false, ""..table.concat(should, ", ")..failmsg..table.concat(result,", ")..""
+            return false, ""..table.concat(result,", ")..failmsg..should..""
           end
         end
       end
@@ -72,7 +73,41 @@ pdtest.suite = function(suite)
             return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
           end
         end
-        return currentTest
+        return currentCase
+      end
+      
+      cmpmet.be_nil = function(self)
+        currentTest.try = function(result)
+          if type(result) == "table" then
+            same = true
+            for i,v in ipairs(result) do
+              if result[i] ~= nil then
+                same = false
+              end
+            end
+            return self:report(" is nil "," is not nil ",same,"nil",result)
+          else
+            return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
+          end
+        end
+        return currentCase
+      end
+      
+      cmpmet.match = function(self,match)
+        currentTest.try = function(result)
+          if type(match) == "string" and type(result) == "table" then
+            same = false
+            for i,v in ipairs(result) do
+              if string.find(result[i],match) ~= nil then
+                same = true
+              end
+            end
+            return self:report(" does match "," does not match ",same,match,result)
+          else
+            return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
+          end
+        end
+        return currentCase
       end
       
       currentTest.should = {invert=false}
@@ -106,8 +141,10 @@ function pdtest_next()
     current.suite.before()
     current.case.before()
     if type(current.test) == "function" then
+      current.name = "function"
       current.test()
     elseif type(current.test) == "table" then
+      current.name = table.concat(current.test, ", ")
       pdtest.message(current.test)
     else
       pdtest.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
@@ -126,7 +163,7 @@ function pdtest_yield()
     result = table.remove(pdtest.results,1)
     current.result = result
     current.success, current.detail = current.try(current.result)
-    nametag = ""..current.suite.name.." -> "..current.case.name
+    nametag = ""..current.suite.name.." -> "..current.case.name.." < "..current.name.." > "
     if current.success then
       pdtest.post(nametag.." |> OK")
     else
