@@ -44,14 +44,12 @@ pdtest.suite = function(suite)
       cmpmet = {}
       cmpmet.report = function(self,okmsg,failmsg,success,should,result)
         if self.invert then
-          pdtest.post("should.nt")
           if success then
             return false, ""..table.concat(should, ", ")..okmsg..table.concat(result,", ")..""
           else
             return true, ""..table.concat(should, ", ")..failmsg..table.concat(result,", ")..""
           end
         else
-          pdtest.post("should")
           if success then
             return true, ""..table.concat(should, ", ")..okmsg..table.concat(result,", ")..""
           else
