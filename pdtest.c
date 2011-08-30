@@ -323,11 +323,15 @@ void pdtest_luasetup(t_pdtest *x)
     lua_pushlightuserdata(x->lua, x);
     lua_setglobal(x->lua,"pdtest_userdata");
     
-    int rez; /* to get rid of unused warning */
-    rez = luaL_dostring(x->lua, pdtest_lua_init);
-    rez = luaL_dostring(x->lua, pdtest_lua_next);
-    rez = luaL_dostring(x->lua, pdtest_lua_yield);
-    rez = luaL_dostring(x->lua, pdtest_lua_report);
+    int err;
+    err = luaL_dostring(x->lua, pdtest_lua_init);
+    if (err) {
+        if (lua_isstring(x->lua,-1))
+            error("error loading 'pdtest_lua_init': %s", lua_tostring(x->lua,-1));
+    }
+    err = luaL_dostring(x->lua, pdtest_lua_next);
+    err = luaL_dostring(x->lua, pdtest_lua_yield);
+    err = luaL_dostring(x->lua, pdtest_lua_report);
 }
 
 /* State for the Lua file reader. */
@@ -658,30 +662,47 @@ const char* pdtest_lua_init = "\n"
 "    currentCase.test = function(test)\n"
 "      currentTest = {test=test, suite=currentSuite, case=currentCase}\n"
 "      \n"
-"      currentTest.should = function()\n"
-"        cmpmet = {}\n"
-"        cmpmet.equal = function(should)\n"
-"          currentTest.try = function(result)\n"
-"            if type(should) == \"table\" and type(result) == \"table\" then\n"
-"              same = true\n"
-"              for i,v in ipairs(should) do\n"
-"                if v ~= result[i] then\n"
-"                  same = false\n"
-"                end\n"
-"              end\n"
-"              if same then\n"
-"                return true, \"\"..table.concat(should, \", \")..\" is equal to \"..table.concat(result,\", \")..\"\"\n"
-"              else\n"
-"                return false, \"\"..table.concat(should, \", \")..\" is not equal to \"..table.concat(result,\", \")..\"\"\n"
-"              end\n"
-"            else\n"
-"              return false, \"Comparison data needs to be tables: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
-"            end\n"
+"      cmpmet = {}\n"
+"      cmpmet.report = function(self,okmsg,failmsg,success,should,result)\n"
+"        if self.invert then\n"
+"          pdtest.post(\"should.nt\")\n"
+"          if success then\n"
+"            return false, \"\"..table.concat(should, \", \")..okmsg..table.concat(result,\", \")..\"\"\n"
+"          else\n"
+"            return true, \"\"..table.concat(should, \", \")..failmsg..table.concat(result,\", \")..\"\"\n"
 "          end\n"
-"          return currentTest\n"
+"        else\n"
+"          pdtest.post(\"should\")\n"
+"          if success then\n"
+"            return true, \"\"..table.concat(should, \", \")..okmsg..table.concat(result,\", \")..\"\"\n"
+"          else\n"
+"            return false, \"\"..table.concat(should, \", \")..failmsg..table.concat(result,\", \")..\"\"\n"
+"          end\n"
 "        end\n"
-"        \n"
-"        return cmpmet\n"
+"      end\n"
+"      \n"
+"      cmpmet.equal = function(self,should)\n"
+"        currentTest.try = function(result)\n"
+"          if type(should) == \"table\" and type(result) == \"table\" then\n"
+"            same = true\n"
+"            for i,v in ipairs(should) do\n"
+"              if v ~= result[i] then\n"
+"                same = false\n"
+"              end\n"
+"            end\n"
+"            return self:report(\" is equal to \",\" is not equal to \",same,should,result)\n"
+"          else\n"
+"            return false, \"Comparison data needs to be tables: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
+"          end\n"
+"        end\n"
+"        return currentTest\n"
+"      end\n"
+"      \n"
+"      currentTest.should = {invert=false}\n"
+"      currentTest.should.nt = {invert=true}\n"
+"      for k,v in pairs(cmpmet) do\n"
+"        currentTest.should[k] = v\n"
+"        currentTest.should.nt[k] = v\n"
 "      end\n"
 "      \n"
 "      table.insert(currentCase.queue,currentTest)\n"
@@ -734,7 +755,7 @@ const char* pdtest_lua_yield = "\n"
 "    if current.success then\n"
 "      pdtest.post(nametag..\" |> OK\")\n"
 "    else\n"
-"      pdtest.post(nametag..\" |> FAILED\"..current.detail)\n"
+"      pdtest.post(nametag..\" |> FAILED >\"..current.detail)\n"
 "    end\n"
 "    return true\n"
 "  elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then\n"

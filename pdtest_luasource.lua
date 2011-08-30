@@ -41,30 +41,47 @@ pdtest.suite = function(suite)
     currentCase.test = function(test)
       currentTest = {test=test, suite=currentSuite, case=currentCase}
       
-      currentTest.should = function()
-        cmpmet = {}
-        cmpmet.equal = function(should)
-          currentTest.try = function(result)
-            if type(should) == "table" and type(result) == "table" then
-              same = true
-              for i,v in ipairs(should) do
-                if v ~= result[i] then
-                  same = false
-                end
-              end
-              if same then
-                return true, ""..table.concat(should, ", ").." is equal to "..table.concat(result,", ")..""
-              else
-                return false, ""..table.concat(should, ", ").." is not equal to "..table.concat(result,", ")..""
-              end
-            else
-              return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
-            end
+      cmpmet = {}
+      cmpmet.report = function(self,okmsg,failmsg,success,should,result)
+        if self.invert then
+          pdtest.post("should.nt")
+          if success then
+            return false, ""..table.concat(should, ", ")..okmsg..table.concat(result,", ")..""
+          else
+            return true, ""..table.concat(should, ", ")..failmsg..table.concat(result,", ")..""
           end
-          return currentTest
+        else
+          pdtest.post("should")
+          if success then
+            return true, ""..table.concat(should, ", ")..okmsg..table.concat(result,", ")..""
+          else
+            return false, ""..table.concat(should, ", ")..failmsg..table.concat(result,", ")..""
+          end
         end
-        
-        return cmpmet
+      end
+      
+      cmpmet.equal = function(self,should)
+        currentTest.try = function(result)
+          if type(should) == "table" and type(result) == "table" then
+            same = true
+            for i,v in ipairs(should) do
+              if v ~= result[i] then
+                same = false
+              end
+            end
+            return self:report(" is equal to "," is not equal to ",same,should,result)
+          else
+            return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
+          end
+        end
+        return currentTest
+      end
+      
+      currentTest.should = {invert=false}
+      currentTest.should.nt = {invert=true}
+      for k,v in pairs(cmpmet) do
+        currentTest.should[k] = v
+        currentTest.should.nt[k] = v
       end
       
       table.insert(currentCase.queue,currentTest)
@@ -115,7 +132,7 @@ function pdtest_yield()
     if current.success then
       pdtest.post(nametag.." |> OK")
     else
-      pdtest.post(nametag.." |> FAILED"..current.detail)
+      pdtest.post(nametag.." |> FAILED >"..current.detail)
     end
     return true
   elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then
