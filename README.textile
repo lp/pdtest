@@ -2,4 +2,65 @@ h1. "Pure Data":puredata.info/ testing external
 
 h3. Async Functional testing for *Pure Data* using *Lua* scripting.
 
-p. _under development...  Come back in a few days._ 
+p. pdtest is a Pure Data external intended at developers needing functional testing for their project.  Functional tests are organised as test suites, grouping test cases that coordinates the many individual tests.  The pdtest external takes no creation arguments and features 2 inlets, the active left for loading test suites and starting, stopping and resetting the test loop while the passive right inlet receives result messages.  Test are built using standard Lua scripts, with provided helper functions for declaring the test structure.
+
+!https://github.com/lp/pdtest/raw/master/img/pdtest-help.png!
+
+h2. Test Suite Syntax:
+
+h4. Building a test suite is _easy_ when you know its basics:
+
+h3. The pdtest namespace
+
+bc. pdtest      -- the pdtest namespace object
+pdtest.suite("suite name")                              -- suite creation function
+pdtest.message({"YOUR","MESSAGE","LIST"})               -- sends lua table as test message through outlet
+pdtest.raw_message({"YOUR","RAW","MESSAGE","LIST"})     -- sends lua table as raw message through outlet,
+                                                        -- raw message are not monitored for testing
+pdtest.post("string to post")                           -- post to pd console
+pdtest.error("string to signal")                        -- sends error to pd console
+
+h3. Suites functions
+
+bc. mysuite = pdtest.suite("my test suite")
+mysuite.setup(function()                                -- set a setup function to be called
+    pdtest.raw_message({"SOME","SETUP","MESSAGE"})      -- before all of this suite tests
+end)
+mysuite.teardown(function()                             -- set a cleanup function to be called
+    pdtest.raw_message({"SOME","CLEANUP","MESSAGE"})    -- after all of this suite tests
+end)
+mysuite.case("my test case")                            -- define a new test case
+
+h3. Cases functions
+
+bc. mycase = mysuite.case("my test case")
+mycase.setup(function()                                 -- set a setup function to be called
+    pdtest.raw_message({"SOME","SETUP","MESSAGE"})      -- before all of this case tests
+end)
+mycase.teardown(function()                              -- set a cleanup function to be called
+    pdtest.raw_message({"SOME","CLEANUP","MESSAGE"})    -- after all of this case tests
+end)
+mycase.test({"MY","TEST","MESSAGE"})                    -- simple test form, takes a lua table as test message
+mycase.test(function()                                  -- long test form, function body can contain only one
+    pdtest.message({"MY","TEST","MESSAGE"})             -- pdtest.message() call, but unlimited pdtest.raw_message().
+end)
+
+h3. Tests functions
+
+bc. mycase.test({"MY","TEST","MESSAGE"}                 -- tests are made by calling condition methods
+    ).should:equal(                                     -- like equal() from the .should namespace
+        {"TEST","DESIRED","OUTPUT","MESSAGE"})          -- notice the colon for calling condition methods
+mycase.test({"MY","TEST","MESSAGE"}                     -- tests can also be reversed by calling them
+    ).should.nt:equal(                                  -- from the .should.nt namespace
+        {"TEST","NOT","DESIRED","OUTPUT","MESSAGE"})
+
+h3. Conditions methods
+
+bc. .should:equal(                                      -- equal method test for message content equality
+    {"TEST","DESIRED","OUTPUT","MESSAGE"})
+.should.nt:equal(                                       -- not equal method
+    {"TEST","DESIRED","OUTPUT","MESSAGE"})
+
+h3. Example Tests Suite
+
+bc. 
