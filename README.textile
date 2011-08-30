@@ -92,7 +92,7 @@ bc. mysuite.case("Reality Check"            -- second test case named "Reality C
   ).test({"command", "dbsize"}          -- inlet match the string "ERR"
     ).should.nt:match("ERR")            -- second test will pass if result doesn't match "ERR"
 
-bc. . mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
+bc. mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
 
 bc. mycase.setup(                           -- called before every test in the case
   function() pdtest.raw_message({"command","SET","FOO","BAR"})
