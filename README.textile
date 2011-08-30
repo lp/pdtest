@@ -2,7 +2,7 @@ h1. "Pure Data":puredata.info/ testing external
 
 h3. Async Functional testing for *Pure Data* using *Lua* scripting.
 
-p. pdtest is a Pure Data external intended at developers needing functional testing for their project.  Functional tests are organised as test suites, grouping test cases that coordinates the many individual tests.  The pdtest external takes no creation arguments and features 2 inlets, the active left for loading test suites and starting, stopping and resetting the test loop while the passive right inlet receives result messages.  Test are built using standard Lua scripts, with provided helper functions for declaring the test structure.
+p. _PdTest_ is intended at developers of Pure Data externals that needs functional testing for their project.  Functional tests are organised as test suites, grouping test cases that coordinates the many individual tests.  The pdtest external takes no creation arguments and features 2 inlets, the active left for loading test suites, starting, stopping and resetting the test loop while the passive right inlet receives result messages.  Test are built using standard Lua scripts, with provided helper functions for declaring the test structure.  Refer to "Lua documentation":http://www.lua.org/docs.html to learn more about test scripts syntax.
 
 !https://github.com/lp/pdtest/raw/master/img/pdtest-help.png!
 
