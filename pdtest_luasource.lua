@@ -61,17 +61,19 @@ pdtest.suite = function(suite)
       
       cmpmet.equal = function(self,should)
         currentTest.try = function(result)
+          same = true
           if type(should) == "table" and type(result) == "table" then
-            same = true
             for i,v in ipairs(should) do
               if v ~= result[i] then
                 same = false
               end
             end
-            return self:report(" is equal to "," is not equal to ",same,should,result)
+          elseif type(should) == "string" and type(result) == "table" then
+            same = should == result[1]
           else
             return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
           end
+          return self:report(" is equal to "," is not equal to ",same,should,result)
         end
         return currentCase
       end

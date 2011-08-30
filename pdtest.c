@@ -330,8 +330,20 @@ void pdtest_luasetup(t_pdtest *x)
             error("error loading 'pdtest_lua_init': %s", lua_tostring(x->lua,-1));
     }
     err = luaL_dostring(x->lua, pdtest_lua_next);
+    if (err) {
+        if (lua_isstring(x->lua,-1))
+            error("error loading 'pdtest_lua_next': %s", lua_tostring(x->lua,-1));
+    }
     err = luaL_dostring(x->lua, pdtest_lua_yield);
+    if (err) {
+        if (lua_isstring(x->lua,-1))
+            error("error loading 'pdtest_lua_yield': %s", lua_tostring(x->lua,-1));
+    }
     err = luaL_dostring(x->lua, pdtest_lua_report);
+    if (err) {
+        if (lua_isstring(x->lua,-1))
+            error("error loading 'pdtest_lua_report': %s", lua_tostring(x->lua,-1));
+    }
 }
 
 /* State for the Lua file reader. */
@@ -682,17 +694,19 @@ const char* pdtest_lua_init = "\n"
 "      \n"
 "      cmpmet.equal = function(self,should)\n"
 "        currentTest.try = function(result)\n"
+"          same = true\n"
 "          if type(should) == \"table\" and type(result) == \"table\" then\n"
-"            same = true\n"
 "            for i,v in ipairs(should) do\n"
 "              if v ~= result[i] then\n"
 "                same = false\n"
 "              end\n"
 "            end\n"
-"            return self:report(\" is equal to \",\" is not equal to \",same,should,result)\n"
+"          elseif type(should) == \"string\" and type(result) == \"table\" then\n"
+"            same = should == result[1]\n"
 "          else\n"
 "            return false, \"Comparison data needs to be tables: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
 "          end\n"
+"          return self:report(\" is equal to \",\" is not equal to \",same,should,result)\n"
 "        end\n"
 "        return currentCase\n"
 "      end\n"
