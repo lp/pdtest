@@ -581,7 +581,7 @@ static int luafunc_pdtest_message(lua_State *lua)
       lua_pop(lua,1); /* cleaning stack of unknown object */
       error("pdtest: userdata missing from Lua stack");
     }
-    return 1;
+    return 0;
 }
 
 /* lua function - sends lua table as raw message list to outlet */
@@ -600,7 +600,7 @@ static int luafunc_pdtest_raw_message(lua_State *lua)
       lua_pop(lua,1); /* cleaning stack of unknown object */
       error("pdtest: userdata missing from Lua stack");
     }
-    return 1;
+    return 0;
 }
 
 /* lua function - sends lua string as error to pd console */
@@ -642,7 +642,7 @@ static int luafunc_pdtest_errorHandler(lua_State *lua)
     }
     lua_pop(lua,1); /* cleaning stack of error string */
     error("pdtest: lua_pcall error: %s", err);
-    return 1;
+    return 0;
 }
 
 /* lua function used in C - register message as test w/0 or raw w/1 */
