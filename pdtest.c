@@ -243,22 +243,26 @@ static void pdtest_run(t_pdtest *x)
 
 static void pdtest_next(t_pdtest * x)
 {
+    /* prepares the stack to call pdtest.next() */
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua, "pdtest_next");
     if (!lua_isfunction(x->lua,-1)) {
         error("pdtest: no pdtest_next function!!!");
         return;
     }
-    
     int err = lua_pcall(x->lua, 0, 1, 0);
-    if (!err) {
+    
+    if (lua_isfunction(x->lua,-2))    /* clean error handler from stack */
+      lua_remove(x->lua,-2);
+    
+    /* if no pcall error, check if still has job and signal error if not */
+    if (!err) {   
         if (lua_isboolean(x->lua,-1)) {
             int doing = lua_toboolean(x->lua,-1);
-            if (!doing) {
-                error("pdtest: scheduled with no action");
-            }
-        }
-    }
+            if (!doing) { error("pdtest: no tests to run..."); }
+        } else { error("pdtest: pdtest.next() didn't return a bool??"); }
+        lua_pop(x->lua,1);  /* clean stack from bool result */
+    } 
 }
 
 static void pdtest_yield(t_pdtest * x)
