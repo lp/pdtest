@@ -247,8 +247,9 @@ static void pdtest_next(t_pdtest * x)
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua, "pdtest_next");
     if (!lua_isfunction(x->lua,-1)) {
-        error("pdtest: no pdtest_next function!!!");
-        return;
+      lua_pop(x->lua,2);
+      error("pdtest: no pdtest_next function!!!");
+      return;
     }
     int err = lua_pcall(x->lua, 0, 1, 0);
     
@@ -271,8 +272,9 @@ static void pdtest_yield(t_pdtest * x)
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua, "pdtest_yield");
     if (!lua_isfunction(x->lua,-1)) {
-        error("pdtest: no pdtest_yield function!!!");
-        return;
+      lua_pop(x->lua,2);
+      error("pdtest: no pdtest_yield function!!!");
+      return;
     }
     int err = lua_pcall(x->lua, 0, 1, -2);
     
@@ -485,8 +487,9 @@ static void pdtest_report(t_pdtest *x)
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua, "pdtest_report");
     if (!lua_isfunction(x->lua,-1)) {
-        error("pdtest: no pdtest_report function!!!");
-        return;
+      lua_pop(x->lua,2);
+      error("pdtest: no pdtest_report function!!!");
+      return;
     }
     int err = lua_pcall(x->lua, 0, 1, -2);
     if (lua_isfunction(x->lua,-2))    /* clean error handler from stack */
@@ -511,12 +514,14 @@ static int pdtest_is_rawmessage(t_pdtest *x)
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua,"pdtest");
     lua_getfield(x->lua, -1, "unregister");
+    if (!lua_isfunction(x->lua,-1)) {
+      lua_pop(x->lua,3);
+      error("pdtest: no pdtest_unregister function!!!");
+      return -1;
+    }
     if (lua_istable(x->lua,-2))    /* clean pdtest table from stack */
       lua_remove(x->lua,-2);
-    if (!lua_isfunction(x->lua,-1)) {
-        error("pdtest: no pdtest_unregister function!!!");
-        return -1;
-    }
+    
     int err = lua_pcall(x->lua, 0,1,-2);
     if (lua_isfunction(x->lua,-2))    /* clean error handler from stack */
       lua_remove(x->lua,-2);
