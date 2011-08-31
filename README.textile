@@ -47,7 +47,7 @@ end)
 
 h3. Tests functions
 
-bc. mycase.test({"MY","TEST","MESSAGE"}                 -- tests are made by calling condition methods
+bc. mycase.test({"MY","TEST","MESSAGE"}                     -- tests are made by calling condition methods
     ).should:equal(                                     -- like equal() from the .should namespace
         {"TEST","DESIRED","OUTPUT","MESSAGE"})          -- notice the colon for calling condition methods
 mycase.test({"MY","TEST","MESSAGE"}                     -- tests can also be reversed by calling them
@@ -56,14 +56,16 @@ mycase.test({"MY","TEST","MESSAGE"}                     -- tests can also be rev
 
 h3. Conditions methods
 
-bc. .should:equal(                                      -- equal method test for message content equality
+bc. .should:equal(                                          -- equal method test for message content equality
     {"TEST","DESIRED","OUTPUT","MESSAGE"})
 .should.nt:equal(                                       -- not equal method
     {"TEST","DESIRED","OUTPUT","MESSAGE"})
+--
 .should:match("%d+%s%a+")                               -- match method matches individual result atoms
                                                         -- against string pattern according to "lua's matching":http://www.lua.org/pil/20.2.html
                                                         -- mechanism.
 .should.nt:match("%d+%s%a+")                            -- not match method
+--
 .should:be_true(function(result)                        -- be_true method test if provided function returns
     if result[1] == "OK" then                           -- true or false
         return true
