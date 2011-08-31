@@ -218,6 +218,8 @@ void pdtest_stop(t_pdtest *x, t_symbol *s)
 void pdtest_reset(t_pdtest *x, t_symbol *s)
 {
     (void) s; /* get rid of parameter warning */
+    
+    /* set empty tables as new test containers */
     lua_getglobal(x->lua,"pdtest");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "queue");
@@ -227,6 +229,7 @@ void pdtest_reset(t_pdtest *x, t_symbol *s)
     lua_setfield(x->lua, -2, "results");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "currents");
+    lua_pop(x->lua,1);    /* clean up the stack */
 }
 
 /* pdtest scheduling methods */
