@@ -74,9 +74,9 @@ static void pdtest_yield(t_pdtest * x);
 static void pdtest_schedule(t_pdtest *x);
 
 /* helper functions */
-void pdtest_luasetup(t_pdtest *x);
+static void pdtest_luasetup(t_pdtest *x);
 static const char *pdtest_lua_reader(lua_State *lua, void *rr, size_t *size);
-void pdtest_lua_loadsuite(t_pdtest *x, const char *filename);
+static void pdtest_lua_loadsuite(t_pdtest *x, const char *filename);
 static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count);
 static void pdtest_report(t_pdtest *x);
 static int pdtest_is_rawmessage(t_pdtest *x);
@@ -308,7 +308,7 @@ static void pdtest_schedule(t_pdtest *x)
  *                                               *
  *************************************************/
 
-void pdtest_luasetup(t_pdtest *x)
+static void pdtest_luasetup(t_pdtest *x)
 {
     /* gets new lua state and loads standard libs */
     x->lua = lua_open();
@@ -392,7 +392,7 @@ static const char *pdtest_lua_reader(lua_State *lua, void *rr, size_t *size)
 
 /* Load Lua test suite */
 /* partially borrowed from pdlua */
-void pdtest_lua_loadsuite(t_pdtest *x, const char *filename)
+static void pdtest_lua_loadsuite(t_pdtest *x, const char *filename)
 {
   char buf[MAXPDSTRING]; char *ptr;
   t_pdtest_lua_readerdata reader;
