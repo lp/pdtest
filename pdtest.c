@@ -368,44 +368,42 @@ void pdtest_luasetup(t_pdtest *x)
 }
 
 /* State for the Lua file reader. */
+/* partially borrowed from pdlua */
 typedef struct pdtest_lua_readerdata {
   int fd; /**< File descriptor to read from. */
   char buffer[MAXPDSTRING]; /**< Buffer to read into. */
 } t_pdtest_lua_readerdata;
 
 /* Lua file reader callback. */
+/* partially borrowed from pdlua */
 static const char *pdtest_lua_reader(lua_State *lua, void *rr, size_t *size)
 {
-    (void) lua; /* get rid of unused parameters warning */
-  t_pdtest_lua_readerdata *r = rr;
-  size_t s;
+  (void) lua; /* get rid of unused parameters warning */
+  t_pdtest_lua_readerdata *r = rr; size_t s;
   s = read(r->fd, r->buffer, MAXPDSTRING-2);
   if (s <= 0) {
-    *size = 0;
-    return NULL;
+    *size = 0; return NULL;
   } else {
-    *size = s;
-    return r->buffer;
+    *size = s; return r->buffer;
   }
 }
 
 /* Load Lua test suite */
+/* partially borrowed from pdlua */
 void pdtest_lua_loadsuite(t_pdtest *x, const char *filename)
 {
-  char buf[MAXPDSTRING];
-  char *ptr;
+  char buf[MAXPDSTRING]; char *ptr;
   t_pdtest_lua_readerdata reader;
   int fd;
-  
   fd = canvas_open(x->canvas, filename, "", buf, &ptr, MAXPDSTRING, 1);
   if (fd >= 0) {
     reader.fd = fd;
     if (lua_load(x->lua, pdtest_lua_reader, &reader, filename)) {
       close(fd);
-      pd_error(x, "pdtest: error loading testfile `%s':\n%s", filename, lua_tostring(x->lua, -1));
+      error("pdtest: error loading testfile `%s':\n%s", filename, lua_tostring(x->lua, -1));
     } else {
       if (lua_pcall(x->lua, 0, 1, 0)) {
-        pd_error(x, "pdtest: error loading testfile `%s':\n%s", filename, lua_tostring(x->lua, -1));
+        error("pdtest: error loading testfile `%s':\n%s", filename, lua_tostring(x->lua, -1));
         lua_pop(x->lua, 1);
         close(fd);
       } else {
@@ -414,21 +412,17 @@ void pdtest_lua_loadsuite(t_pdtest *x, const char *filename)
       }
     }
   } else {
-    pd_error(x, "pdtest: error loading testfile `%s':\n%s", filename, "File Not Found!!?");
+    error("pdtest: error loading testfile `%s':\n%s", filename, "File Not Found!!?");
   }
 }
 
 /* Convert a Lua table into a Pd atom array. */
+/* partially borrowed from pdlua */
 static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
 {
-  int i = 0;
-  int ok = 1;
-  t_float f;
-  const char *s;
-  void *p;
-  size_t sl;
-  t_atom *atoms;
-  atoms = NULL;
+  int i = 0; int ok = 1; t_float f;
+  const char *s; void *p; size_t sl;
+  t_atom *atoms; atoms = NULL;
   
   if (lua_istable(L, -1)) {
     *count = lua_objlen(L, -1);
@@ -437,14 +431,12 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
     while (lua_next(L, -2) != 0) {
       if (i == *count) {
         error("pdtest: too many table elements in message");
-        ok = 0;
-        break;
+        ok = 0; break;
       }
       switch (lua_type(L, -1)) {
       case (LUA_TNUMBER):
         f = lua_tonumber(L, -1);
-        SETFLOAT(&atoms[i], f);
-        break;
+        SETFLOAT(&atoms[i], f); break;
       case (LUA_TSTRING):
         s = lua_tolstring(L, -1, &sl);
         if (s) {
@@ -463,8 +455,7 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
         break;
       default:
         error("pdtest: message table element must be number or string or pointer");
-        ok = 0;
-        break;
+        ok = 0; break;
       }
       lua_pop(L, 1);
       ++i;
