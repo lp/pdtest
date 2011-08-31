@@ -79,7 +79,7 @@ static const char *pdtest_lua_reader(lua_State *lua, void *rr, size_t *size);
 void pdtest_lua_loadsuite(t_pdtest *x, const char *filename);
 static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count);
 static void pdtest_report(t_pdtest *x);
-static int is_rawmessage(t_pdtest *x);
+static int pdtest_is_rawmessage(t_pdtest *x);
 static void pdtest_reg_message(t_pdtest *x, int israw);
 
 /* Lua functions */
@@ -172,7 +172,7 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
   if (argc < 1) {   /* skip result was empty ??? */
       error("pdtest: result message is empty"); return;}
   /* skip result if correspondent message was raw_message */
-  if (is_rawmessage(x)) { return; }
+  if (pdtest_is_rawmessage(x)) { return; }
   
   /* gets pdtest.results table onto the stack*/
   lua_getglobal(x->lua, "pdtest");
@@ -505,7 +505,7 @@ static void pdtest_report(t_pdtest *x)
     }
 }
 
-static int is_rawmessage(t_pdtest *x)
+static int pdtest_is_rawmessage(t_pdtest *x)
 {
     /* prepares the stack to call pdtest.unregister() */
     lua_getglobal(x->lua,"pdtest_errorHandler");
