@@ -640,7 +640,8 @@ static int luafunc_pdtest_errorHandler(lua_State *lua)
     } else {
         err = " ";
     }
-    error("pdtest: lua error: %s", err);
+    lua_pop(lua,1); /* cleaning stack of error string */
+    error("pdtest: lua_pcall error: %s", err);
     return 1;
 }
 
