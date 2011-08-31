@@ -190,10 +190,10 @@ function pdtest_yield()
       pdtest.post(nametag)
       pdtest.post("x> FAILED |> "..current.detail)
     end
-    return true
   elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then
     return false
   end
+  return true
 end
 
 function pdtest_report()
