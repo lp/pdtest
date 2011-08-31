@@ -267,9 +267,19 @@ static void pdtest_next(t_pdtest * x)
 
 static void pdtest_yield(t_pdtest * x)
 {
+    /* prepares the stack to call pdtest.yield() */
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua, "pdtest_yield");
+    if (!lua_isfunction(x->lua,-1)) {
+        error("pdtest: no pdtest_yield function!!!");
+        return;
+    }
     int err = lua_pcall(x->lua, 0, 1, -2);
+    
+    if (lua_isfunction(x->lua,-2))    /* clean error handler from stack */
+      lua_remove(x->lua,-2);
+    
+    /* if no pcall error, check if still has results and stops if not */
     if (!err) {
         if (lua_isboolean(x->lua,-1)) {
             int again = lua_toboolean(x->lua,-1);
@@ -277,7 +287,8 @@ static void pdtest_yield(t_pdtest * x)
                 pdtest_stop(x, gensym("yield"));
                 pdtest_report(x);
             }
-        }
+        } else { error("pdtest: pdtest.yield() didn't return a bool??"); }
+        lua_pop(x->lua,1);  /* clean stack from bool result */
     }
 }
 
@@ -833,10 +844,10 @@ const char* pdtest_lua_yield = "\n"
 "      pdtest.post(nametag)\n"
 "      pdtest.post(\"x> FAILED |> \"..current.detail)\n"
 "    end\n"
-"    return true\n"
 "  elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then\n"
 "    return false\n"
 "  end\n"
+"  return true\n"
 "end\n";
 
 const char* pdtest_lua_report = "\n"
