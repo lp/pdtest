@@ -1,0 +1,27 @@
+#N canvas 505 420 678 329 10;
+#X text 22 22 pdtest usage:;
+#X obj 501 193 pdtest;
+#X msg 416 46 suite testsuite.lua;
+#X msg 539 274 list result \$1;
+#X obj 423 222 route list;
+#X msg 371 85 start;
+#X msg 259 133 stop;
+#X msg 373 174 reset;
+#X obj 422 257 your external;
+#X text 38 44 - Loading the test suite testsuite.lua \, path lookup
+is done using pd's paths.;
+#X text 40 80 - Starting the test loop manually \, otherwise started
+automatically by the suite loading message.;
+#X text 41 133 - Stopping the test loop manually;
+#X text 42 173 - Reset test data \, need to be done before re-starting.
+;
+#X text 42 221 - pdtest outputs messages specified in testsuites.;
+#X text 43 256 - Passive right inlet receives result messages.;
+#X connect 1 0 4 0;
+#X connect 2 0 1 0;
+#X connect 3 0 1 1;
+#X connect 4 0 8 0;
+#X connect 5 0 1 0;
+#X connect 6 0 1 0;
+#X connect 7 0 1 0;
+#X connect 8 0 3 0;
