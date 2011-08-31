@@ -648,14 +648,24 @@ static int luafunc_pdtest_errorHandler(lua_State *lua)
 /* lua function used in C - register message as test w/0 or raw w/1 */
 static int luafunc_pdtest_register(lua_State *lua)
 {
+    if (!lua_isboolean(lua,-1)) {
+      lua_pop(lua,-1);
+      error("pdtest: no boolean as pdtest.register() argument");
+      return 0;
+    }
     lua_getglobal(lua,"pdtest");
     lua_getfield(lua, -1, "reg");
-    int n = luaL_getn(lua,-1);
-    lua_insert(lua,-3);
-    lua_pop(lua,1);
+    if (!lua_istable(lua,-1)) {
+        lua_pop(lua,2);
+        error("pdtest: no pdtest.reg table!!!");
+        return 0;
+    }
+    lua_remove(lua,-2);   /* clean stack of pdtest table */
     
+    int n = luaL_getn(lua,-1);
+    lua_insert(lua,-2);   /* insert reg behind bool */
     lua_rawseti(lua,-2,n+1);
-    lua_pop(lua,1);
+    lua_pop(lua,1);       /* clean stack of reg table */
     return 0;
 }
 
