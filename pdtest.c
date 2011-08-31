@@ -507,26 +507,32 @@ static void pdtest_report(t_pdtest *x)
 
 static int is_rawmessage(t_pdtest *x)
 {
+    /* prepares the stack to call pdtest.unregister() */
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua,"pdtest");
     lua_getfield(x->lua, -1, "unregister");
-    lua_pcall(x->lua, 0,1,-3);
-    
-    if (lua_isboolean(x->lua,-1)) {
-        return lua_toboolean(x->lua,-1);
-    } else if (lua_istable(x->lua,-1)) {
-        error("pdtest unregister did return a table???...");
-        return -1;
-    } else if (lua_isnumber(x->lua,-1)) {
-        error("pdtest unregister did return a number???...");
-        return -1;
-    } else if (lua_isnil(x->lua,-1)) {
-        error("pdtest unregister did return a nil???...");
-        return -1;
-    } else {
-        error("pdtest unregister didn't return a bool...");
+    if (lua_istable(x->lua,-2))    /* clean pdtest table from stack */
+      lua_remove(x->lua,-2);
+    if (!lua_isfunction(x->lua,-1)) {
+        error("pdtest: no pdtest_unregister function!!!");
         return -1;
     }
+    int err = lua_pcall(x->lua, 0,1,-2);
+    if (lua_isfunction(x->lua,-2))    /* clean error handler from stack */
+      lua_remove(x->lua,-2);
+    
+    /* if no pcall error, return pcall bool result */
+    if (!err) {
+      if (lua_isboolean(x->lua,-1)) {
+          int result = lua_toboolean(x->lua,-1);
+          lua_pop(x->lua,1);  /* clean stack from bool result */
+          return result;
+      } else {
+          lua_pop(x->lua,1);  /* clean stack from bool result */
+          error("pdtest unregister didn't return a bool...");
+      }
+    }
+    return -1;
 }
 
 static void reg_message(t_pdtest *x, int israw)
