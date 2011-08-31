@@ -565,6 +565,7 @@ static void pdtest_reg_message(t_pdtest *x, int israw)
  *                                               *
  *************************************************/
 
+/* lua function - sends lua table as test message list to outlet */
 static int luafunc_pdtest_message(lua_State *lua)
 {
     int count;
@@ -583,6 +584,7 @@ static int luafunc_pdtest_message(lua_State *lua)
     return 1;
 }
 
+/* lua function - sends lua table as raw message list to outlet */
 static int luafunc_pdtest_raw_message(lua_State *lua)
 {
     int count;
@@ -601,30 +603,35 @@ static int luafunc_pdtest_raw_message(lua_State *lua)
     return 1;
 }
 
+/* lua function - sends lua string as error to pd console */
 static int luafunc_pdtest_error(lua_State *lua)
 {
   const char *s = luaL_checkstring(lua, 1);
+  if (lua_isstring(lua,-1))
+    lua_pop(lua,1);   /* clean up stack of error string */
   if (s) {
     error("pdtest: %s", s);
   } else {
     error("pdtest: error in posting pd error, no error message string in Lua stack");
   }
-  
   return 0;
 }
 
+/* lua function - sends lua string as post to pd console */
 static int luafunc_pdtest_post(lua_State *lua)
 {
   const char *s = luaL_checkstring(lua, 1);
+  if (lua_isstring(lua,-1))
+    lua_pop(lua,1);   /* clean up stack of post string */
   if (s) {
     post("pdtest: %s", s);
   } else {
     error("pdtest: error in posting pd post, no message string in Lua stack");
   }
-  
   return 0;
 }
 
+/* lua function used in C - error handler callback */
 static int luafunc_pdtest_errorHandler(lua_State *lua)
 {
     const char* err;
@@ -637,6 +644,7 @@ static int luafunc_pdtest_errorHandler(lua_State *lua)
     return 1;
 }
 
+/* lua function used in C - register message as test w/0 or raw w/1 */
 static int luafunc_pdtest_register(lua_State *lua)
 {
     lua_getglobal(lua,"pdtest");
@@ -650,6 +658,7 @@ static int luafunc_pdtest_register(lua_State *lua)
     return 0;
 }
 
+/* lua function - unregister next message and return its bool */
 static int luafunc_pdtest_unregister(lua_State *lua)
 {
     lua_getglobal(lua,"pdtest");
