@@ -64,6 +64,20 @@ bc. .should:equal(                                      -- equal method test for
                                                         -- against string pattern according to "lua's matching":http://www.lua.org/pil/20.2.html
                                                         -- mechanism.
 .should.nt:match("%d+%s%a+")                            -- not match method
+.should:be_true(function(result)                        -- be_true method test if provided function returns
+    if result[1] == "OK" then                           -- true or false
+        return true
+    else
+        return false
+    end
+end)
+.should.nt:be_true(function(result)                     -- not be_true (be_false...)
+    if result[1] == "ERROR" then
+        return true
+    else
+        return false
+    end
+end)
 
 h3. Example Tests Suite
 
@@ -107,6 +121,16 @@ bc. mycase.test(function()                  -- here a test function is passed in
 end).should:equal("0")                  -- equal is passed a string, when result list
                                         -- contains only one member
 
+bc. mycase.test(
+  {"command","SETNX","FOO","BAT"}
+  ).should:be_true(function(result)     -- test method '.should:be_true' takes a function
+    if result[1] == "1" then            -- for which it provides a 'result' argument
+      return true                       -- the function must return true or false
+    else
+      return false
+    end
+  end)
+
 h5. pd console
 
 bc. pdtest: loading testfile examplesuite.lua
@@ -115,9 +139,10 @@ pdtest: TestSuite -> Reality Check < command, dummy >  |> OK
 pdtest: TestSuite -> Reality Check < command, dbsize >  |> OK
 pdtest: TestSuite -> Basic tests < command, GET, FOO >  |> OK
 pdtest: TestSuite -> Basic tests < function >  |> OK
+pdtest: TestSuite -> Basic tests < command, SETNX, FOO, BAT >  |> FAILED > 0 is not true 
 pdtest: !!! Test Completed !!!
-pdtest: 1 Suites | 3 Cases | 5 Tests
+pdtest: 1 Suites | 3 Cases | 6 Tests
 pdtest: 5 tests passed
-pdtest: 0 tests failed
+pdtest: 1 tests failed
 
 
