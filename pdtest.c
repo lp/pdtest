@@ -570,12 +570,14 @@ static int luafunc_pdtest_message(lua_State *lua)
     int count;
     t_atom *message = pdtest_lua_popatomtable(lua,&count);
     
-    lua_getglobal(lua, "pdtest_userdata");
+    lua_getglobal(lua, "pdtest_userdata"); /* get t_pdtest since we're in lua now */
     if (lua_islightuserdata(lua,-1)) {
       t_pdtest *x = lua_touserdata(lua,-1);
-      pdtest_reg_message(x,0);
-      outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);
+      lua_pop(lua,1);           /* clean up stack of userdata */
+      pdtest_reg_message(x,0);  /* register message as test mesage */
+      outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);   /* sends list message to outlet */
     } else {
+      lua_pop(lua,1); /* cleaning stack of unknown object */
       error("pdtest: userdata missing from Lua stack");
     }
     return 1;
