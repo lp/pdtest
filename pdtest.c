@@ -674,26 +674,38 @@ static int luafunc_pdtest_unregister(lua_State *lua)
 {
     lua_getglobal(lua,"pdtest");
     lua_getfield(lua, -1, "reg");
+    if (!lua_istable(lua,-1)) {
+      lua_pop(lua,2);
+      error("pdtest: no pdtest.reg table!!!");
+      lua_pushnil(lua);
+      return 1;
+    }
+    lua_remove(lua,-2);   /* clean stack of pdtest table */
+    
     int n = luaL_getn(lua,-1);
     if (n == 0) {
-        error("pdtest: unregistering on an empty queue?");
-        lua_pushnil(lua);
-        return 1;
+      lua_pop(lua,-1);    /* clean stack of empty reg */
+      error("pdtest: unregistering on an empty queue?");
+      lua_pushnil(lua);
+      return 1;
     }
-    luaL_setn(lua, -2, n-1);
+    luaL_setn(lua, -1, n-1);  /* sets new reg table size */
     
     int pos = 1;
+    /* place the first message status bool behind the reg table */
+    /* leave it there to be harvested when function returns */
     lua_rawgeti(lua,-1,pos);
+    lua_insert(lua,-2);   
+    
+    /* ripple down indexes of other message in the reg */
     for ( ;pos<n;pos++) {
-        lua_rawgeti(lua, -2, pos+1);
-        lua_rawseti(lua, -3, pos);
+        lua_rawgeti(lua, -1, pos+1);
+        lua_rawseti(lua, -2, pos);
     }
     lua_pushnil(lua);
-    lua_rawseti(lua, -3, n);
+    lua_rawseti(lua, -2, n);
     
-    lua_remove(lua, -3);
-    lua_remove(lua, -2);
-    
+    lua_pop(lua,1);   /* clean stack of reg table */
     return 1;
 }
 
