@@ -481,17 +481,27 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
 
 static void pdtest_report(t_pdtest *x)
 {
+    /* prepares the stack to call pdtest.report() */
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua, "pdtest_report");
-    int error = lua_pcall(x->lua, 0, 1, -2);
-    if (!error) {
+    if (!lua_isfunction(x->lua,-1)) {
+        error("pdtest: no pdtest_report function!!!");
+        return;
+    }
+    int err = lua_pcall(x->lua, 0, 1, -2);
+    if (lua_isfunction(x->lua,-2))    /* clean error handler from stack */
+      lua_remove(x->lua,-2);
+    
+    /* if no pcall error, check if still has results and re-start if there is some */
+    if (!err) {
         if (lua_isboolean(x->lua,-1)) {
             int done = lua_toboolean(x->lua,-1);
             if (!done) {
                 post("pdtest: postponing report as the queue is not empty...");
                 pdtest_start(x,gensym("report"));
             }
-        }
+        } else { error("pdtest: pdtest.report() didn't return a bool??"); }
+        lua_pop(x->lua,1);  /* clean stack from bool result */
     }
 }
 
