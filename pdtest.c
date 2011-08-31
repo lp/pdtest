@@ -80,7 +80,7 @@ void pdtest_lua_loadsuite(t_pdtest *x, const char *filename);
 static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count);
 static void pdtest_report(t_pdtest *x);
 static int is_rawmessage(t_pdtest *x);
-static void reg_message(t_pdtest *x, int israw);
+static void pdtest_reg_message(t_pdtest *x, int israw);
 
 /* Lua functions */
 static int luafunc_pdtest_message(lua_State *lua);
@@ -535,13 +535,24 @@ static int is_rawmessage(t_pdtest *x)
     return -1;
 }
 
-static void reg_message(t_pdtest *x, int israw)
+static void pdtest_reg_message(t_pdtest *x, int israw)
 {
+    /* prepares the stack to call pdtest.register() */
     lua_getglobal(x->lua,"pdtest_errorHandler");
     lua_getglobal(x->lua,"pdtest");
     lua_getfield(x->lua, -1, "register");
-    lua_pushboolean(x->lua, israw);
-    lua_pcall(x->lua,1,0,-4);
+    if (!lua_isfunction(x->lua,-1)) {
+        lua_pop(x->lua,3);
+        error("pdtest: no pdtest_reg_message function!!!");
+        return;
+    }
+    if (lua_istable(x->lua,-2))    /* clean pdtest table from stack */
+      lua_remove(x->lua,-2);
+    
+    lua_pushboolean(x->lua, israw); /* push bool argument to register() */
+    lua_pcall(x->lua,1,0,-3);
+    if (lua_isfunction(x->lua,-1))    /* clean error handler from stack */
+      lua_remove(x->lua,-1);
 }
 
 /*************************************************
@@ -557,7 +568,7 @@ static int luafunc_pdtest_message(lua_State *lua)
     lua_getglobal(lua, "pdtest_userdata");
     if (lua_islightuserdata(lua,-1)) {
       t_pdtest *x = lua_touserdata(lua,-1);
-      reg_message(x,0);
+      pdtest_reg_message(x,0);
       outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);
     } else {
       error("pdtest: userdata missing from Lua stack");
@@ -573,7 +584,7 @@ static int luafunc_pdtest_raw_message(lua_State *lua)
     lua_getglobal(lua, "pdtest_userdata");
     if (lua_islightuserdata(lua,-1)) {
       t_pdtest *x = lua_touserdata(lua,-1);
-      reg_message(x,1);
+      pdtest_reg_message(x,1);
       outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);
     } else {
       error("pdtest: userdata missing from Lua stack");
