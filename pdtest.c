@@ -308,9 +308,11 @@ static void pdtest_schedule(t_pdtest *x)
 
 void pdtest_luasetup(t_pdtest *x)
 {
+    /* gets new lua state and loads standard libs */
     x->lua = lua_open();
     luaL_openlibs(x->lua);
     
+    /* prepare global pdtest namespace */
     lua_newtable(x->lua);
     lua_pushcfunction(x->lua, luafunc_pdtest_message);
     lua_setfield(x->lua, -2, "message");
@@ -336,12 +338,12 @@ void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "reg");
     lua_setglobal(x->lua,"pdtest");
     
-    lua_pushcfunction(x->lua, luafunc_pdtest_errorHandler);
-    lua_setglobal(x->lua,"pdtest_errorHandler");
-    
+    /* set error handler and t_pdtest instance in global namespace */
+    lua_register(x->lua,"pdtest_errorHandler",luafunc_pdtest_errorHandler);
     lua_pushlightuserdata(x->lua, x);
     lua_setglobal(x->lua,"pdtest_userdata");
     
+    /* execute lua source code embeded in C strings to initialize lua test system */
     int err;
     err = luaL_dostring(x->lua, pdtest_lua_init);
     if (err) {
