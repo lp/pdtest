@@ -44,6 +44,7 @@ pdtest.suite = function(suite)
       cmpmet = {}
       cmpmet.report = function(self,okmsg,failmsg,success,should,result)
         if type(should) == "table" then should = table.concat(should, ", ") end
+        if type(should) == "function" then should = "" end
         if self.invert then
           if success then
             return false, ""..table.concat(result,", ")..okmsg..should..""
@@ -93,7 +94,7 @@ pdtest.suite = function(suite)
             end
             return self:report(" is nil "," is not nil ",same,"nil",result)
           else
-            return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
+            return false, "Comparison data needs to be table: result is '"..type(result).."'"
           end
         end
         return currentCase
@@ -110,7 +111,19 @@ pdtest.suite = function(suite)
             end
             return self:report(" does match "," does not match ",same,match,result)
           else
-            return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
+            return false, "Comparison data needs to be string and table: should is '"..type(should).."', result is '"..type(result).."'"
+          end
+        end
+        return currentCase
+      end
+      
+      cmpmet.be_true = function(self,should)
+        currentTest.try = function(result)
+          if type(should) == "function" and type(result) == "table" then
+            same = should(result)
+            return self:report(" is true "," is not true ",same,should,result)
+          else
+            return false, "Comparison data needs to be function and table: should is '"..type(should).."', result is '"..type(result).."'"
           end
         end
         return currentCase
@@ -171,9 +184,11 @@ function pdtest_yield()
     current.success, current.detail = current.try(current.result)
     nametag = ""..current.suite.name.." -> "..current.case.name.." < "..current.name.." > "
     if current.success then
-      pdtest.post(nametag.." |> OK")
+      pdtest.post(nametag)
+      pdtest.post("-> OK")
     else
-      pdtest.post(nametag.." |> FAILED >"..current.detail)
+      pdtest.post(nametag)
+      pdtest.post("x> FAILED |> "..current.detail)
     end
     return true
   elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then
