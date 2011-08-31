@@ -3,7 +3,7 @@ pdtest = {}
 
 -- pdtest_init
 pdtest.suite = function(suite)
-  currentSuite = {name=suite, queue={}, dones={}}
+  local currentSuite = {name=suite, queue={}, dones={}}
   
   currentSuite.before = function() end
   currentSuite.after = function() end
@@ -21,7 +21,7 @@ pdtest.suite = function(suite)
   end
   
   currentSuite.case = function(case)
-    currentCase = {name=case, queue={}, dones={}}
+    local currentCase = {name=case, queue={}, dones={}}
     
     currentCase.before = function() end
     currentCase.after = function() end
@@ -39,9 +39,9 @@ pdtest.suite = function(suite)
     end
     
     currentCase.test = function(test)
-      currentTest = {test=test, suite=currentSuite, case=currentCase}
+      local currentTest = {test=test, suite=currentSuite, case=currentCase}
       
-      cmpmet = {}
+      local cmpmet = {}
       cmpmet.report = function(self,okmsg,failmsg,success,should,result)
         if type(should) == "table" then should = table.concat(should, ", ") end
         if type(should) == "function" then should = "" end
@@ -62,7 +62,7 @@ pdtest.suite = function(suite)
       
       cmpmet.equal = function(self,should)
         currentTest.try = function(result)
-          same = true
+          local same = true
           if type(should) == "table" and type(result) == "table" then
             for i,v in ipairs(should) do
               if v ~= result[i] then
@@ -86,7 +86,7 @@ pdtest.suite = function(suite)
       cmpmet.be_nil = function(self)
         currentTest.try = function(result)
           if type(result) == "table" then
-            same = true
+            local same = true
             for i,v in ipairs(result) do
               if result[i] ~= nil then
                 same = false
@@ -103,7 +103,7 @@ pdtest.suite = function(suite)
       cmpmet.match = function(self,match)
         currentTest.try = function(result)
           if type(match) == "string" and type(result) == "table" then
-            same = false
+            local same = false
             for i,v in ipairs(result) do
               if string.find(result[i],match) ~= nil then
                 same = true
@@ -120,7 +120,7 @@ pdtest.suite = function(suite)
       cmpmet.be_true = function(self,should)
         currentTest.try = function(result)
           if type(should) == "function" and type(result) == "table" then
-            same = should(result)
+            local same = should(result)
             return self:report(" is true "," is not true ",same,should,result)
           else
             return false, "Comparison data needs to be function and table: should is '"..type(should).."', result is '"..type(result).."'"
@@ -156,7 +156,7 @@ function pdtest_next()
   elseif table.getn(pdtest.queue[1].queue[1].queue) == 0 then
     table.insert(pdtest.queue[1].dones, table.remove(pdtest.queue[1].queue,1))
   else
-    current = pdtest.queue[1].queue[1].queue[1]
+    local current = pdtest.queue[1].queue[1].queue[1]
     current.suite.before()
     current.case.before()
     if type(current.test) == "function" then
@@ -178,11 +178,11 @@ end
 
 function pdtest_yield()
   if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then
-    current = table.remove(pdtest.currents,1)
-    result = table.remove(pdtest.results,1)
+    local current = table.remove(pdtest.currents,1)
+    local result = table.remove(pdtest.results,1)
     current.result = result
     current.success, current.detail = current.try(current.result)
-    nametag = ""..current.suite.name.." -> "..current.case.name.." < "..current.name.." > "
+    local nametag = ""..current.suite.name.." -> "..current.case.name.." < "..current.name.." > "
     if current.success then
       pdtest.post(nametag)
       pdtest.post("-> OK")
@@ -201,11 +201,11 @@ function pdtest_report()
     return false
   else
     pdtest.post("!!! Test Completed !!!")
-    tests = 0
-    cases = 0
-    suites = 0
-    ok = 0
-    fail = 0
+    local tests = 0
+    local cases = 0
+    local suites = 0
+    local ok = 0
+    local fail = 0
     for si, suite in ipairs(pdtest.dones) do
       suites = suites + 1
       for ci, case in ipairs(suite.dones) do
