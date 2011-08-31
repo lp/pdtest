@@ -168,32 +168,33 @@ void pdtest_suite(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
 
 void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
 {
-    (void) s; /* get rid of parameter warning */
-  if (argc < 1) {
-      error("pdtest: result message is empty"); return;
-  }
+  (void) s; /* get rid of parameter warning */
+  if (argc < 1) {   /* skip result was empty ??? */
+      error("pdtest: result message is empty"); return;}
+  /* skip result if correspondent message was raw_message */
+  if (is_rawmessage(x)) { return; }
   
-  if (is_rawmessage(x)) {
-      return;
-  }
-  
+  /* gets pdtest.results table onto the stack*/
   lua_getglobal(x->lua, "pdtest");
   lua_getfield(x->lua, -1, "results");
   int n = luaL_getn(x->lua,-1);
   
+  /* build result message table from argv */
   lua_newtable(x->lua);
   int i;
   for (i = 0; i < argc; i++) {
       char result[256];
       atom_string(argv+i, result, 256);
-      const char* resultS = (const char*)result;
+      const char* resultstring = (const char*)result;
       
       if (!i == 0) {
-          lua_pushstring(x->lua,resultS);
+          lua_pushstring(x->lua,resultstring);
           lua_rawseti(x->lua,-2,i);
       }
   }
-  lua_rawseti(x->lua,-2,n+1);
+  
+  lua_rawseti(x->lua,-2,n+1);   /* push result message in pdtest.table */
+  lua_pop(x->lua,2);            /* clean up the stack */
 }
 
 void pdtest_start(t_pdtest *x, t_symbol *s)
