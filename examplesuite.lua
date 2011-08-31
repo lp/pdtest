@@ -34,3 +34,12 @@ mycase.test(function()                  -- here a test function is passed instea
 end).should:equal("0")                  -- equal is passed a string, when result list
                                         -- contains only one member
 
+mycase.test(
+  {"command","SETNX","FOO","BAT"}
+  ).should:be_true(function(result)     -- test method '.should:be_true' takes a function
+    if result[1] == "1" then            -- for which it provides a 'result' argument
+      return true                       -- the function must return true or false
+    else
+      return false
+    end
+  end)
