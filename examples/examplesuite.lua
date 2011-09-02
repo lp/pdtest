@@ -1,11 +1,11 @@
 mysuite = pdtest.suite("TestSuite")     -- initializing a new test suite named "TestSuite"
 
 mysuite.setup(function()                -- called before every test in the suite
-  pdtest.raw_message({"command","flushdb"})
+  pdtest.raw.list({"command","flushdb"})
 end)
 
 mysuite.teardown(function()             -- called after every test in the suite
-  pdtest.raw_message({"command","flushdb"})
+  pdtest.raw.list({"command","flushdb"})
 end)
 
 mysuite.case("Server Info"              -- new test case named "Server Info"
@@ -22,22 +22,21 @@ mysuite.case("Reality Check"            -- second test case named "Reality Check
 mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
 
 mycase.setup(                           -- called before every test in the case
-  function() pdtest.raw_message({"command","SET","FOO","BAR"})
+  function() pdtest.raw.list({"command","SET","FOO","BAR"})
 end)
 
 mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "BAR"
-  ).should:equal({"BAR"})
+  ).should:equal("BAR")
 
 mycase.test(function()                  -- here a test function is passed instead
-  pdtest.raw_message({"command","DEL","FOO"})
-  pdtest.message({"command","EXISTS","FOO"})
-end).should:equal("0")                  -- equal is passed a string, when result list
-                                        -- contains only one member
+  pdtest.raw.list({"command","DEL","FOO"})
+  pdtest.out.list({"command","EXISTS","FOO"})
+end).should:equal(0)                    
 
 mycase.test(
   {"command","SETNX","FOO","BAT"}
   ).should:be_true(function(result)     -- test method '.should:be_true' takes a function
-    if result[1] == "1" then            -- for which it provides a 'result' argument
+    if result == 1 then                 -- for which it provides a 'result' argument
       return true                       -- the function must return true or false
     else
       return false
