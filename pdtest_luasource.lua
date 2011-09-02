@@ -92,6 +92,29 @@ pdtest.suite = function(suite)
         return currentCase
       end
       
+      cmpmet.resemble = function(self,should)
+        currentTest.try = function(result)
+          local same = true
+          if type(should) == "table" and type(result) == "table" then
+            should_set = set.new(should)
+            result_set = set.new(result)
+            same = set.equal(should_set,result_set)
+          elseif type(should) == type(result) then
+            same = should == result
+          elseif (type(should) == "string" and type(result) == "number") or
+            (type(result) == "string" and type(should) == "number") then
+            same = tostring(should) == tostring(result)
+          else
+            if type(should) == "table" then
+              same = tostring(should[1]) == tostring(result)
+            elseif type(result) == "table" then
+              same = tostring(result[1]) == tostring(should)
+            end
+          end
+          return self:report(" does resemble "," does not resemble ",same,should,result)
+        end
+      end
+      
       cmpmet.be_nil = function(self)
         currentTest.try = function(result)
           local same = true
