@@ -28,7 +28,7 @@ pdtest.out.bang()                                       -- sends bang as test me
 
 h3. The pdtest.raw namespace -> untested messages
 
-p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside _setup()/teardown()_ or as test helpers inside *pdtest.test()* _function()_.  General rule: 1 ignored inlet message for each *pdtest.raw* call.
+p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *pdtest.test()* _function()_.  General rule: 1 ignored inlet message for each *pdtest.raw* call.
 
 bc. pdtest.raw.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
 pdtest.raw.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
