@@ -76,7 +76,13 @@ h3. Conditions methods
 bc. .should:equal(                                          -- equal method test for message content equality
     {"TEST","DESIRED","OUTPUT","MESSAGE"})
 .should.nt:equal(                                       -- not equal method
-    {"TEST","DESIRED","OUTPUT","MESSAGE"})
+    {"TEST","UNDESIRED","OUTPUT","MESSAGE"})
+--
+.should:resemble(                                       -- resemble is close to equal, 2 list will resemble if 
+    {"SOME","MESSAGE","LIST"})                          -- they have the same members even with different indexes
+                                                        -- a number and a string will match if their string values
+.should.not:resemble(                                   -- are equal and strings or numbers will match a tables first
+    {"SOME", "OTHER", "MESSAGE", "LIST"})               -- member
 --
 .should:match("%d+%s%a+")                               -- match method matches individual result atoms
                                                         -- against string pattern according to "lua's matching":http://www.lua.org/pil/20.2.html
