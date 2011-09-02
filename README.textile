@@ -19,7 +19,7 @@ pdtest.error("string to signal")                        -- sends error to pd con
 
 h3. The pdtest.out namespace
 
-h4. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *pd.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *pdtest.out* call for each *pdtest.test()*.
+p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *pd.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *pdtest.out* call for each *pdtest.test()*.
 
 bc. pdtest.out.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as test message list through outlet
 pdtest.out.symbol("STRING")                             -- sends lua string as test message symbol through outlet
@@ -28,7 +28,7 @@ pdtest.out.bang()                                       -- sends bang as test me
 
 h3. The pdtest.raw namespace -> untested messages
 
-h4. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside _setup()/teardown()_ or as test helpers inside *pdtest.test()* _function()_.  General rule: 1 ignored inlet message for each *pdtest.raw* call.
+p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside _setup()/teardown()_ or as test helpers inside *pdtest.test()* _function()_.  General rule: 1 ignored inlet message for each *pdtest.raw* call.
 
 bc. pdtest.raw.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
 pdtest.raw.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
