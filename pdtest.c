@@ -57,7 +57,7 @@ typedef struct pdtest
 
 /* pdtest init methods */
 void pdtest_setup(void);
-void *pdtest_new(void);
+void *pdtest_new(t_symbol *s, int argc, t_atom *argv);
 void pdtest_free(t_pdtest *x);
 
 /* pdtest inlets methods */
@@ -112,7 +112,8 @@ void pdtest_setup(void)
         (t_newmethod)pdtest_new,
         (t_method)pdtest_free,
         sizeof(t_pdtest),
-        CLASS_DEFAULT,0);
+        CLASS_DEFAULT,
+        A_GIMME,0);
     
     class_addmethod(pdtest_class,
         (t_method)pdtest_suite, gensym("suite"),
@@ -142,24 +143,39 @@ void pdtest_setup(void)
     post("pdtest: compiled for pd-%d.%d on %s %s", PD_MAJOR_VERSION, PD_MINOR_VERSION, __DATE__, __TIME__);
 }
 
-void *pdtest_new(void)
+void *pdtest_new(t_symbol *s, int argc, t_atom *argv)
 {
-    t_pdtest *x = NULL;
-    x = (t_pdtest*)pd_new(pdtest_class);
+  (void)s;
+  t_pdtest *x = NULL;
+  x = (t_pdtest*)pd_new(pdtest_class);
+  
+  x->canvas = canvas_getcurrent();
+  pdtest_luasetup(x);
     
-    x->canvas = canvas_getcurrent();
-    pdtest_luasetup(x);
-    
-    x->async_run = 0;
-    x->async_clock = clock_new(x, (t_method)pdtest_run);
-    
-    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("list"), gensym("result_list"));
-    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("symbol"), gensym("result_symbol"));
-    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("float"), gensym("result_float"));
-    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("bang"), gensym("result_bang"));
-    outlet_new(&x->x_obj, NULL);
-    
-    return (void*)x;
+  x->async_run = 0;
+  x->async_clock = clock_new(x, (t_method)pdtest_run);
+  
+  int i;
+  for (i = 0; i < argc; i++) {
+    t_symbol * sarg = atom_getsymbol(argv+i);
+    if ((sarg == &s_list) || (sarg == gensym("l"))) {
+      inlet_new(&x->x_obj, &x->x_obj.ob_pd, &s_list, gensym("result_list"));
+    } else if ((sarg == &s_symbol) || (sarg == gensym("s"))) {
+      inlet_new(&x->x_obj, &x->x_obj.ob_pd, &s_symbol, gensym("result_symbol"));
+    } else if ((sarg == &s_float) || (sarg == gensym("f"))) {
+      inlet_new(&x->x_obj, &x->x_obj.ob_pd, &s_float, gensym("result_float"));
+    } else if ((sarg == &s_bang) || (sarg == gensym("b"))) {
+      inlet_new(&x->x_obj, &x->x_obj.ob_pd, &s_bang, gensym("result_bang"));
+    } else {
+      char arg[16];
+      atom_string(argv+i, arg, 16);
+      error("pdtest: unknown inlet argument '%s'",(const char*)arg);
+    }
+  }
+  
+  outlet_new(&x->x_obj, NULL);
+  
+  return (void*)x;
 }
 
 void pdtest_free(t_pdtest *x)
