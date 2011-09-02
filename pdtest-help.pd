@@ -1,27 +1,34 @@
-#N canvas 505 420 678 329 10;
+#N canvas 524 109 733 364 10;
 #X text 22 22 pdtest usage:;
-#X obj 501 193 pdtest;
-#X msg 416 46 suite testsuite.lua;
-#X msg 539 274 list result \$1;
-#X obj 423 222 route list;
-#X msg 371 85 start;
-#X msg 259 133 stop;
-#X msg 373 174 reset;
-#X obj 422 257 your external;
-#X text 38 44 - Loading the test suite testsuite.lua \, path lookup
+#X msg 412 78 suite testsuite.lua;
+#X obj 419 254 route list;
+#X msg 367 117 start;
+#X msg 255 165 stop;
+#X msg 369 206 reset;
+#X obj 418 289 your external;
+#X text 34 76 - Loading the test suite testsuite.lua \, path lookup
 is done using pd's paths.;
-#X text 40 80 - Starting the test loop manually \, otherwise started
+#X text 35 119 - Starting the test loop manually \, otherwise started
 automatically by the suite loading message.;
-#X text 41 133 - Stopping the test loop manually;
-#X text 42 173 - Reset test data \, need to be done before re-starting.
+#X text 36 165 - Stopping the test loop manually;
+#X text 37 205 - Reset test data \, need to be done before re-starting.
 ;
-#X text 42 221 - pdtest outputs messages specified in testsuites.;
-#X text 43 256 - Passive right inlet receives result messages.;
-#X connect 1 0 4 0;
-#X connect 2 0 1 0;
-#X connect 3 0 1 1;
-#X connect 4 0 8 0;
-#X connect 5 0 1 0;
-#X connect 6 0 1 0;
-#X connect 7 0 1 0;
-#X connect 8 0 3 0;
+#X obj 497 225 pdtest l s f b;
+#X obj 510 155 route list symbol float bang;
+#X obj 514 187 list;
+#X text 33 48 - pdtest creation arguments specifies the test inlets
+types;
+#X text 38 244 - pdtest outputs messages as specified in testsuites.
+;
+#X connect 1 0 11 0;
+#X connect 2 0 6 0;
+#X connect 3 0 11 0;
+#X connect 4 0 11 0;
+#X connect 5 0 11 0;
+#X connect 6 0 12 0;
+#X connect 11 0 2 0;
+#X connect 12 0 13 0;
+#X connect 12 1 11 2;
+#X connect 12 2 11 3;
+#X connect 12 3 11 4;
+#X connect 13 0 11 1;
