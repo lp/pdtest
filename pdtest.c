@@ -81,10 +81,19 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count);
 static void pdtest_report(t_pdtest *x);
 static int pdtest_is_rawmessage(t_pdtest *x);
 static void pdtest_reg_message(t_pdtest *x, int israw);
+static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw);
 
 /* Lua functions */
-static int luafunc_pdtest_message(lua_State *lua);
-static int luafunc_pdtest_raw_message(lua_State *lua);
+static int luafunc_pdtest_message(lua_State *lua, t_symbol* msgtype, int israw);
+static int luafunc_pdtest_out_list(lua_State *lua);
+static int luafunc_pdtest_out_symbol(lua_State *lua);
+static int luafunc_pdtest_out_float(lua_State *lua);
+static int luafunc_pdtest_out_bang(lua_State *lua);
+static int luafunc_pdtest_raw_list(lua_State *lua);
+static int luafunc_pdtest_raw_symbol(lua_State *lua);
+static int luafunc_pdtest_raw_float(lua_State *lua);
+static int luafunc_pdtest_raw_bang(lua_State *lua);
+
 static int luafunc_pdtest_error(lua_State *lua);
 static int luafunc_pdtest_post(lua_State *lua);
 static int luafunc_pdtest_errorHandler(lua_State *lua);
@@ -109,7 +118,13 @@ void pdtest_setup(void)
         (t_method)pdtest_suite, gensym("suite"),
         A_GIMME, 0);
     class_addmethod(pdtest_class,
-        (t_method)pdtest_result, gensym("result"),
+        (t_method)pdtest_result, gensym("result_list"),
+        A_GIMME, 0);
+    class_addmethod(pdtest_class,
+        (t_method)pdtest_result, gensym("result_symbol"),
+        A_GIMME, 0);
+    class_addmethod(pdtest_class,
+        (t_method)pdtest_result, gensym("result_float"),
         A_GIMME, 0);
     class_addmethod(pdtest_class,
         (t_method)pdtest_start, gensym("start"),0);
@@ -135,7 +150,9 @@ void *pdtest_new(void)
     x->async_run = 0;
     x->async_clock = clock_new(x, (t_method)pdtest_run);
     
-    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("list"), gensym("result"));
+    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("list"), gensym("result_list"));
+    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("symbol"), gensym("result_symbol"));
+    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("float"), gensym("result_float"));
     outlet_new(&x->x_obj, NULL);
     
     return (void*)x;
@@ -168,7 +185,6 @@ void pdtest_suite(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
 
 void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
 {
-  (void) s; /* get rid of parameter warning */
   if (argc < 1) {   /* skip result was empty ??? */
       error("pdtest: result message is empty"); return;}
   /* skip result if correspondent message was raw_message */
@@ -179,18 +195,30 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
   lua_getfield(x->lua, -1, "results");
   int n = luaL_getn(x->lua,-1);
   
-  /* build result message table from argv */
-  lua_newtable(x->lua);
-  int i;
-  for (i = 0; i < argc; i++) {
-      char result[256];
-      atom_string(argv+i, result, 256);
-      const char* resultstring = (const char*)result;
-      
-      if (!i == 0) {
-          lua_pushstring(x->lua,resultstring);
-          lua_rawseti(x->lua,-2,i);
-      }
+  if (s == gensym("result_list")) {
+    /* build result message table from argv */
+    lua_newtable(x->lua);
+    int i;
+    for (i = 0; i < argc; i++) {
+        char result[256];
+        atom_string(argv+i, result, 256);
+        const char* resultstring = (const char*)result;
+        post("RESULT LIST: %s", resultstring);
+        lua_pushstring(x->lua,resultstring);
+        lua_rawseti(x->lua,-2,i+1);
+        post("RESULT + %s",resultstring);
+    }
+  } else if (s == gensym("result_symbol")) {
+    post("RESULT SYMBOL");
+    char result[256];
+    atom_string(argv, result, 256);
+    const char* resultstring = (const char*)result;
+    post("RESULT SYM: %s", resultstring);
+    lua_pushstring(x->lua,resultstring);
+  } else if   (s == gensym("result_float")) {
+    double result = (double)atom_getfloatarg(0,argc,argv);
+    post("RESULT FLOAT: %f",result);
+    lua_pushnumber(x->lua, result);
   }
   
   lua_rawseti(x->lua,-2,n+1);   /* push result message in pdtest.table */
@@ -229,6 +257,8 @@ void pdtest_reset(t_pdtest *x, t_symbol *s)
     lua_setfield(x->lua, -2, "results");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "currents");
+    lua_newtable(x->lua);
+    lua_setfield(x->lua, -2, "reg");
     lua_pop(x->lua,1);    /* clean up the stack */
 }
 
@@ -316,10 +346,6 @@ static void pdtest_luasetup(t_pdtest *x)
     
     /* prepare global pdtest namespace */
     lua_newtable(x->lua);
-    lua_pushcfunction(x->lua, luafunc_pdtest_message);
-    lua_setfield(x->lua, -2, "message");
-    lua_pushcfunction(x->lua, luafunc_pdtest_raw_message);
-    lua_setfield(x->lua, -2, "raw_message");
     lua_pushcfunction(x->lua, luafunc_pdtest_error);
     lua_setfield(x->lua, -2, "error");
     lua_pushcfunction(x->lua, luafunc_pdtest_post);
@@ -328,6 +354,32 @@ static void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "register");
     lua_pushcfunction(x->lua, luafunc_pdtest_unregister);
     lua_setfield(x->lua, -2, "unregister");
+    
+    /* pdtest.out namespace */
+    lua_newtable(x->lua);
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_list);
+    lua_setfield(x->lua, -2, "list");
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_symbol);
+    lua_setfield(x->lua, -2, "symbol");
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_float);
+    lua_setfield(x->lua, -2, "float");
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_bang);
+    lua_setfield(x->lua, -2, "bang");
+    lua_setfield(x->lua, -2, "out");
+    
+    /* pdtest.raw namespace */
+    lua_newtable(x->lua);
+    lua_pushcfunction(x->lua, luafunc_pdtest_raw_list);
+    lua_setfield(x->lua, -2, "list");
+    lua_pushcfunction(x->lua, luafunc_pdtest_raw_symbol);
+    lua_setfield(x->lua, -2, "symbol");
+    lua_pushcfunction(x->lua, luafunc_pdtest_raw_float);
+    lua_setfield(x->lua, -2, "float");
+    lua_pushcfunction(x->lua, luafunc_pdtest_raw_bang);
+    lua_setfield(x->lua, -2, "bang");
+    lua_setfield(x->lua, -2, "raw");
+    
+    
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "queue");
     lua_newtable(x->lua);
@@ -560,23 +612,55 @@ static void pdtest_reg_message(t_pdtest *x, int israw)
       lua_remove(x->lua,-1);
 }
 
+static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw)
+{
+    if (msgtype == &s_list) {
+      int count = 0;
+      t_atom *message = pdtest_lua_popatomtable(x->lua,&count);
+      pdtest_reg_message(x,israw);  /* register message as test mesage */
+      outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);   /* sends list message to outlet */
+      
+    } else if (msgtype == &s_symbol) {
+      if (!lua_isstring(x->lua,-1)) {
+        lua_pop(x->lua,1);
+        error("pdtest: pdtest.x.symbol() must have a string as argument");
+      } 
+      const char* message = lua_tostring(x->lua,-1);
+      lua_pop(x->lua,1);
+      pdtest_reg_message(x,israw);  /* register message as test mesage */
+      outlet_symbol(x->x_obj.ob_outlet, gensym(message)); /* sends symbol message to outlet */
+      
+    } else if (msgtype == &s_float) {
+      if (!lua_isnumber(x->lua,-1)) {
+        lua_pop(x->lua,1);
+        error("pdtest: pdtest.x.float() must have a string as argument");
+      } 
+      double message = lua_tonumber(x->lua,-1);
+      lua_pop(x->lua,1);
+      pdtest_reg_message(x,israw);  /* register message as test mesage */
+      outlet_float(x->x_obj.ob_outlet, (t_float)message); /* sends float message to outlet */
+      
+    } else if (msgtype == &s_bang) {
+      pdtest_reg_message(x,israw);  /* register message as test mesage */
+      outlet_bang(x->x_obj.ob_outlet); /* sends bang message to outlet */
+      
+    } else {
+      error("pdtest: pdtest_message function needs a valid msgtype");
+    }
+}
+
 /*************************************************
  *               Lua functions                   *
  *                                               *
  *************************************************/
 
-/* lua function - sends lua table as test message list to outlet */
-static int luafunc_pdtest_message(lua_State *lua)
+static int luafunc_pdtest_message(lua_State *lua, t_symbol* msgtype, int israw)
 {
-    int count;
-    t_atom *message = pdtest_lua_popatomtable(lua,&count);
-    
     lua_getglobal(lua, "pdtest_userdata"); /* get t_pdtest since we're in lua now */
     if (lua_islightuserdata(lua,-1)) {
       t_pdtest *x = lua_touserdata(lua,-1);
       lua_pop(lua,1);           /* clean up stack of userdata */
-      pdtest_reg_message(x,0);  /* register message as test mesage */
-      outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);   /* sends list message to outlet */
+      pdtest_message(x, msgtype, israw);
     } else {
       lua_pop(lua,1); /* cleaning stack of unknown object */
       error("pdtest: userdata missing from Lua stack");
@@ -584,23 +668,45 @@ static int luafunc_pdtest_message(lua_State *lua)
     return 0;
 }
 
-/* lua function - sends lua table as raw message list to outlet */
-static int luafunc_pdtest_raw_message(lua_State *lua)
+
+static int luafunc_pdtest_out_list(lua_State *lua)
 {
-    int count;
-    t_atom *message = pdtest_lua_popatomtable(lua,&count);
-    
-    lua_getglobal(lua, "pdtest_userdata");  /* get t_pdtest since we're in lua now */
-    if (lua_islightuserdata(lua,-1)) {
-      t_pdtest *x = lua_touserdata(lua,-1);
-      lua_pop(lua,1);           /* clean up stack of userdata */
-      pdtest_reg_message(x,1);  /* register message as raw mesage */
-      outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);   /* sends list message to outlet */
-    } else {
-      lua_pop(lua,1); /* cleaning stack of unknown object */
-      error("pdtest: userdata missing from Lua stack");
-    }
-    return 0;
+  return luafunc_pdtest_message(lua, &s_list, 0);
+}
+
+static int luafunc_pdtest_out_symbol(lua_State *lua)
+{
+  return luafunc_pdtest_message(lua, &s_symbol, 0);
+}
+
+static int luafunc_pdtest_out_float(lua_State *lua)
+{
+  return luafunc_pdtest_message(lua, &s_float, 0);
+}
+
+static int luafunc_pdtest_out_bang(lua_State *lua)
+{
+  return luafunc_pdtest_message(lua, &s_bang, 0);
+}
+
+static int luafunc_pdtest_raw_list(lua_State *lua)
+{
+  return luafunc_pdtest_message(lua, &s_list, 1);
+}
+
+static int luafunc_pdtest_raw_symbol(lua_State *lua)
+{
+  return luafunc_pdtest_message(lua, &s_symbol, 1);
+}
+
+static int luafunc_pdtest_raw_float(lua_State *lua)
+{
+  return luafunc_pdtest_message(lua, &s_float, 1);
+}
+
+static int luafunc_pdtest_raw_bang(lua_State *lua)
+{
+  return luafunc_pdtest_message(lua, &s_bang, 1);
 }
 
 /* lua function - sends lua string as error to pd console */
@@ -756,19 +862,31 @@ const char* pdtest_lua_init = "\n"
 "      \n"
 "      local cmpmet = {}\n"
 "      cmpmet.report = function(self,okmsg,failmsg,success,should,result)\n"
-"        if type(should) == \"table\" then should = table.concat(should, \", \") end\n"
-"        if type(should) == \"function\" then should = \"\" end\n"
+"        if type(should) == \"table\" then\n"
+"          should = table.concat(should, \", \")\n"
+"        elseif type(should) == \"number\" then\n"
+"          should = tostring(should)\n"
+"        elseif type(should) == \"function\" then\n"
+"          should = \"function\"\n"
+"        end\n"
+"        \n"
+"        if type(result) == \"table\" then\n"
+"          result = table.concat(result,\", \")\n"
+"        elseif type(result) == \"number\" then\n"
+"          result = tostring(result)\n"
+"        end\n"
+"        \n"
 "        if self.invert then\n"
 "          if success then\n"
-"            return false, \"\"..table.concat(result,\", \")..okmsg..should..\"\"\n"
+"            return false, \"\"..result..okmsg..should..\"\"\n"
 "          else\n"
-"            return true, \"\"..table.concat(result,\", \")..failmsg..should..\"\"\n"
+"            return true, \"\"..result..failmsg..should..\"\"\n"
 "          end\n"
 "        else\n"
 "          if success then\n"
-"            return true, \"\"..table.concat(result,\", \")..okmsg..should..\"\"\n"
+"            return true, \"\"..result..okmsg..should..\"\"\n"
 "          else\n"
-"            return false, \"\"..table.concat(result,\", \")..failmsg..should..\"\"\n"
+"            return false, \"\"..result..failmsg..should..\"\"\n"
 "          end\n"
 "        end\n"
 "      end\n"
@@ -782,14 +900,11 @@ const char* pdtest_lua_init = "\n"
 "                same = false\n"
 "              end\n"
 "            end\n"
-"          elseif type(should) == \"string\" and type(result) == \"table\" then\n"
-"            if table.getn(result) == 1 then\n"
-"              same = should == result[1]\n"
-"            else\n"
-"              same = false\n"
-"            end\n"
+"          elseif (type(should) == \"string\" and type(result) == \"string\") or\n"
+"            type(should) == \"number\" and type(result) == \"number\" then\n"
+"            same = should == result\n"
 "          else\n"
-"            return false, \"Comparison data needs to be tables: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
+"            return false, \"Comparison data needs to be of similar type: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
 "          end\n"
 "          return self:report(\" is equal to \",\" is not equal to \",same,should,result)\n"
 "        end\n"
@@ -798,30 +913,48 @@ const char* pdtest_lua_init = "\n"
 "      \n"
 "      cmpmet.be_nil = function(self)\n"
 "        currentTest.try = function(result)\n"
+"          local same = true\n"
 "          if type(result) == \"table\" then\n"
-"            local same = true\n"
 "            for i,v in ipairs(result) do\n"
 "              if result[i] ~= nil then\n"
 "                same = false\n"
 "              end\n"
 "            end\n"
-"            return self:report(\" is nil \",\" is not nil \",same,\"nil\",result)\n"
+"          elseif type(result) == \"string\" or type(result) == \"number\" then\n"
+"            same = false\n"
+"          elseif type(result) == nil then\n"
+"            same = true\n"
 "          else\n"
-"            return false, \"Comparison data needs to be table: result is '\"..type(result)..\"'\"\n"
+"            return false, \"Comparison result needs to be table, string or number: result is '\"..type(result)..\"'\"\n"
 "          end\n"
+"          \n"
+"          return self:report(\" is nil \",\" is not nil \",same,\"nil\",result)\n"
 "        end\n"
 "        return currentCase\n"
 "      end\n"
 "      \n"
 "      cmpmet.match = function(self,match)\n"
 "        currentTest.try = function(result)\n"
-"          if type(match) == \"string\" and type(result) == \"table\" then\n"
+"          if type(match) == \"string\" then\n"
 "            local same = false\n"
-"            for i,v in ipairs(result) do\n"
-"              if string.find(result[i],match) ~= nil then\n"
+"            if type(result) == \"table\" then\n"
+"              for i,v in ipairs(result) do\n"
+"                if string.find(result[i],match) ~= nil then\n"
+"                  same = true\n"
+"                end\n"
+"              end\n"
+"            elseif type(result) == \"string\" then\n"
+"              if string.find(result,match) ~= nil then\n"
 "                same = true\n"
 "              end\n"
+"            elseif type(result) == \"number\" then\n"
+"              if string.find(tostring(result),match) ~= nil then\n"
+"                same = true\n"
+"              end\n"
+"            else\n"
+"              return false, \"Comparison result needs to be list,string or number: result is '\"..type(result)..\"'\"\n"
 "            end\n"
+"            \n"
 "            return self:report(\" does match \",\" does not match \",same,match,result)\n"
 "          else\n"
 "            return false, \"Comparison data needs to be string and table: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
@@ -832,11 +965,11 @@ const char* pdtest_lua_init = "\n"
 "      \n"
 "      cmpmet.be_true = function(self,should)\n"
 "        currentTest.try = function(result)\n"
-"          if type(should) == \"function\" and type(result) == \"table\" then\n"
+"          if type(should) == \"function\" then\n"
 "            local same = should(result)\n"
 "            return self:report(\" is true \",\" is not true \",same,should,result)\n"
 "          else\n"
-"            return false, \"Comparison data needs to be function and table: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
+"            return false, \"Comparison data needs to be function: should is '\"..type(should)..\"'\"\n"
 "          end\n"
 "        end\n"
 "        return currentCase\n"
@@ -878,7 +1011,13 @@ const char* pdtest_lua_next = "\n"
 "      current.test()\n"
 "    elseif type(current.test) == \"table\" then\n"
 "      current.name = table.concat(current.test, \", \")\n"
-"      pdtest.message(current.test)\n"
+"      pdtest.out.list(current.test)\n"
+"    elseif type(current.test) == \"string\" then\n"
+"      current.name = current.test\n"
+"      pdtest.out.symbol(current.test)\n"
+"    elseif type(current.test) == \"number\" then\n"
+"      current.name = tostring(current.test)\n"
+"      pdtest.out.float(current.test)\n"
 "    else\n"
 "      pdtest.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
 "    end\n"
@@ -942,3 +1081,4 @@ const char* pdtest_lua_report = "\n"
 "  end\n"
 "  return true\n"
 "end\n";
+

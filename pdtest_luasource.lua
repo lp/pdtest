@@ -43,19 +43,31 @@ pdtest.suite = function(suite)
       
       local cmpmet = {}
       cmpmet.report = function(self,okmsg,failmsg,success,should,result)
-        if type(should) == "table" then should = table.concat(should, ", ") end
-        if type(should) == "function" then should = "" end
+        if type(should) == "table" then
+          should = table.concat(should, ", ")
+        elseif type(should) == "number" then
+          should = tostring(should)
+        elseif type(should) == "function" then
+          should = "function"
+        end
+        
+        if type(result) == "table" then
+          result = table.concat(result,", ")
+        elseif type(result) == "number" then
+          result = tostring(result)
+        end
+        
         if self.invert then
           if success then
-            return false, ""..table.concat(result,", ")..okmsg..should..""
+            return false, ""..result..okmsg..should..""
           else
-            return true, ""..table.concat(result,", ")..failmsg..should..""
+            return true, ""..result..failmsg..should..""
           end
         else
           if success then
-            return true, ""..table.concat(result,", ")..okmsg..should..""
+            return true, ""..result..okmsg..should..""
           else
-            return false, ""..table.concat(result,", ")..failmsg..should..""
+            return false, ""..result..failmsg..should..""
           end
         end
       end
@@ -69,14 +81,11 @@ pdtest.suite = function(suite)
                 same = false
               end
             end
-          elseif type(should) == "string" and type(result) == "table" then
-            if table.getn(result) == 1 then
-              same = should == result[1]
-            else
-              same = false
-            end
+          elseif (type(should) == "string" and type(result) == "string") or
+            type(should) == "number" and type(result) == "number" then
+            same = should == result
           else
-            return false, "Comparison data needs to be tables: should is '"..type(should).."', result is '"..type(result).."'"
+            return false, "Comparison data needs to be of similar type: should is '"..type(should).."', result is '"..type(result).."'"
           end
           return self:report(" is equal to "," is not equal to ",same,should,result)
         end
@@ -85,30 +94,48 @@ pdtest.suite = function(suite)
       
       cmpmet.be_nil = function(self)
         currentTest.try = function(result)
+          local same = true
           if type(result) == "table" then
-            local same = true
             for i,v in ipairs(result) do
               if result[i] ~= nil then
                 same = false
               end
             end
-            return self:report(" is nil "," is not nil ",same,"nil",result)
+          elseif type(result) == "string" or type(result) == "number" then
+            same = false
+          elseif type(result) == nil then
+            same = true
           else
-            return false, "Comparison data needs to be table: result is '"..type(result).."'"
+            return false, "Comparison result needs to be table, string or number: result is '"..type(result).."'"
           end
+          
+          return self:report(" is nil "," is not nil ",same,"nil",result)
         end
         return currentCase
       end
       
       cmpmet.match = function(self,match)
         currentTest.try = function(result)
-          if type(match) == "string" and type(result) == "table" then
+          if type(match) == "string" then
             local same = false
-            for i,v in ipairs(result) do
-              if string.find(result[i],match) ~= nil then
+            if type(result) == "table" then
+              for i,v in ipairs(result) do
+                if string.find(result[i],match) ~= nil then
+                  same = true
+                end
+              end
+            elseif type(result) == "string" then
+              if string.find(result,match) ~= nil then
                 same = true
               end
+            elseif type(result) == "number" then
+              if string.find(tostring(result),match) ~= nil then
+                same = true
+              end
+            else
+              return false, "Comparison result needs to be list,string or number: result is '"..type(result).."'"
             end
+            
             return self:report(" does match "," does not match ",same,match,result)
           else
             return false, "Comparison data needs to be string and table: should is '"..type(should).."', result is '"..type(result).."'"
@@ -119,11 +146,11 @@ pdtest.suite = function(suite)
       
       cmpmet.be_true = function(self,should)
         currentTest.try = function(result)
-          if type(should) == "function" and type(result) == "table" then
+          if type(should) == "function" then
             local same = should(result)
             return self:report(" is true "," is not true ",same,should,result)
           else
-            return false, "Comparison data needs to be function and table: should is '"..type(should).."', result is '"..type(result).."'"
+            return false, "Comparison data needs to be function: should is '"..type(should).."'"
           end
         end
         return currentCase
@@ -164,7 +191,13 @@ function pdtest_next()
       current.test()
     elseif type(current.test) == "table" then
       current.name = table.concat(current.test, ", ")
-      pdtest.message(current.test)
+      pdtest.out.list(current.test)
+    elseif type(current.test) == "string" then
+      current.name = current.test
+      pdtest.out.symbol(current.test)
+    elseif type(current.test) == "number" then
+      current.name = tostring(current.test)
+      pdtest.out.float(current.test)
     else
       pdtest.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
     end
