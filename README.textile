@@ -2,7 +2,7 @@ h1. "Pure Data":puredata.info/ testing external
 
 h3. Async Functional testing for *Pure Data* using *Lua* scripting.
 
-p. _PdTest_ is intended at developers of Pure Data externals that needs functional testing for their project.  Functional tests are organised as test suites, grouping test cases that coordinates the many individual tests.  The pdtest external takes no creation arguments and features 2 inlets, the active left for loading test suites, starting, stopping and resetting the test loop while the passive right inlet receives result messages.  Test are built using standard Lua scripts, with provided helper functions for declaring the test structure.  Refer to "Lua documentation":http://www.lua.org/docs.html to learn more about test scripts syntax.
+p. _PdTest_ is intended at developers of Pure Data externals that needs functional testing for their project.  Functional tests are organised as test suites, grouping test cases that coordinates the many individual tests.  The pdtest external features mandatory inlet type creation arguments, adding test inlets for receiving results of the specifed types, while the active left inlet is used for loading test suites, starting, stopping and resetting the test loop.  Test are built using standard Lua scripts, with provided helper functions for declaring the test structure.  Refer to "Lua documentation":http://www.lua.org/docs.html to learn more about test scripts syntax.
 
 !https://github.com/lp/pdtest/raw/master/img/pdtest-help.png!
 
@@ -14,20 +14,31 @@ h3. The pdtest namespace
 
 bc. pdtest      -- the pdtest namespace object
 pdtest.suite("suite name")                              -- suite creation function
-pdtest.message({"YOUR","MESSAGE","LIST"})               -- sends lua table as test message through outlet
-pdtest.raw_message({"YOUR","RAW","MESSAGE","LIST"})     -- sends lua table as raw message through outlet,
-                                                        -- raw message are not monitored for testing
 pdtest.post("string to post")                           -- post to pd console
 pdtest.error("string to signal")                        -- sends error to pd console
+
+h3. The pdtest.out namespace -> tested messages
+
+bc. pdtest.out.list({"YOUR","MESSAGE","LIST"})          -- sends lua table as test message list through outlet
+pdtest.out.symbol("STRING")                             -- sends lua string as test message symbol through outlet
+pdtest.out.number(3.1416)                               -- sends lua number as test message float through outlet
+pdtest.out.bang()                                       -- sends bang as test message through outlet
+
+h3. The pdtest.raw namespace -> untested messages
+
+bc. pdtest.raw.list({"YOUR","MESSAGE","LIST"})          -- sends lua table as raw message list through outlet
+pdtest.raw.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
+pdtest.raw.number(3.1416)                               -- sends lua number as raw message float through outlet
+pdtest.raw.bang()                                       -- sends bang as raw message through outlet
 
 h3. Suites functions
 
 bc. mysuite = pdtest.suite("my test suite")
 mysuite.setup(function()                                -- set a setup function to be called
-    pdtest.raw_message({"SOME","SETUP","MESSAGE"})      -- before all of this suite tests
+    pdtest.raw.list({"SOME","SETUP","MESSAGE"})      -- before all of this suite tests
 end)
 mysuite.teardown(function()                             -- set a cleanup function to be called
-    pdtest.raw_message({"SOME","CLEANUP","MESSAGE"})    -- after all of this suite tests
+    pdtest.raw.list({"SOME","CLEANUP","MESSAGE"})    -- after all of this suite tests
 end)
 mysuite.case("my test case")                            -- define a new test case
 
@@ -35,14 +46,16 @@ h3. Cases functions
 
 bc. mycase = mysuite.case("my test case")
 mycase.setup(function()                                 -- set a setup function to be called
-    pdtest.raw_message({"SOME","SETUP","MESSAGE"})      -- before all of this case tests
+    pdtest.raw.list({"SOME","SETUP","MESSAGE"})      -- before all of this case tests
 end)
 mycase.teardown(function()                              -- set a cleanup function to be called
-    pdtest.raw_message({"SOME","CLEANUP","MESSAGE"})    -- after all of this case tests
+    pdtest.raw.list({"SOME","CLEANUP","MESSAGE"})    -- after all of this case tests
 end)
-mycase.test({"MY","TEST","MESSAGE"})                    -- simple test form, takes a lua table as test message
+mycase.test({"MY","TEST","MESSAGE"})                    -- lua table as pd list message to outlet
+mycase.test("MESSAGE")                                  -- lua string as pd symbol message to outlet
+mycase.test(3.1416)                                     -- lua number as pd float message to outlet
 mycase.test(function()                                  -- long test form, function body can contain only one
-    pdtest.message({"MY","TEST","MESSAGE"})             -- pdtest.message() call, but unlimited pdtest.raw_message().
+    pdtest.out.list({"MY","TEST","MESSAGE"})            -- pdtest.out.<type>() call, but unlimited pdtest.raw.<type>().
 end)
 
 h3. Tests functions
@@ -90,11 +103,11 @@ h5. examplesuite.lua
 bc. mysuite = pdtest.suite("TestSuite") -- initializing a new test suite named "TestSuite"
 
 bc. mysuite.setup(function()                -- called before every test in the suite
-  pdtest.raw_message({"command","flushdb"})
+  pdtest.raw.list({"command","flushdb"})
 end)
 
 bc. mysuite.teardown(function()             -- called after every test in the suite
-  pdtest.raw_message({"command","flushdb"})
+  pdtest.raw.list({"command","flushdb"})
 end)
 
 bc. mysuite.case("Server Info"              -- new test case named "Server Info"
@@ -111,22 +124,21 @@ bc. mysuite.case("Reality Check"            -- second test case named "Reality C
 bc. mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
 
 bc. mycase.setup(                           -- called before every test in the case
-  function() pdtest.raw_message({"command","SET","FOO","BAR"})
+  function() pdtest.raw.list({"command","SET","FOO","BAR"})
 end)
 
 bc. mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "BAR"
-  ).should:equal({"BAR"})
+  ).should:equal("BAR")
 
 bc. mycase.test(function()                  -- here a test function is passed instead
-  pdtest.raw_message({"command","DEL","FOO"})
-  pdtest.message({"command","EXISTS","FOO"})
-end).should:equal("0")                  -- equal is passed a string, when result list
-                                        -- contains only one member
+        pdtest.raw.list({"command","DEL","FOO"})
+        pdtest.out.list({"command","EXISTS","FOO"})
+    end).should:equal(0)
 
 bc. mycase.test(
   {"command","SETNX","FOO","BAT"}
   ).should:be_true(function(result)     -- test method '.should:be_true' takes a function
-    if result[1] == "1" then            -- for which it provides a 'result' argument
+    if result == 1 then                 -- for which it provides a 'result' argument
       return true                       -- the function must return true or false
     else
       return false
@@ -136,12 +148,18 @@ bc. mycase.test(
 h5. pd console
 
 bc. pdtest: loading testfile examplesuite.lua
-pdtest: TestSuite -> Server Info < command, INFO >  |> OK
-pdtest: TestSuite -> Reality Check < command, dummy >  |> OK
-pdtest: TestSuite -> Reality Check < command, dbsize >  |> OK
-pdtest: TestSuite -> Basic tests < command, GET, FOO >  |> OK
-pdtest: TestSuite -> Basic tests < function >  |> OK
-pdtest: TestSuite -> Basic tests < command, SETNX, FOO, BAT >  |> FAILED > 0 is not true 
+pdtest: TestSuite -> Server Info < command, INFO > 
+pdtest: -> OK
+pdtest: TestSuite -> Reality Check < command, dummy > 
+pdtest: -> OK
+pdtest: TestSuite -> Reality Check < command, dbsize > 
+pdtest: -> OK
+pdtest: TestSuite -> Basic tests < command, GET, FOO > 
+pdtest: -> OK
+pdtest: TestSuite -> Basic tests < function > 
+pdtest: -> OK
+pdtest: TestSuite -> Basic tests < command, SETNX, FOO, BAT > 
+pdtest: x> FAILED |> 0 is not true function
 pdtest: !!! Test Completed !!!
 pdtest: 1 Suites | 3 Cases | 6 Tests
 pdtest: 5 tests passed
