@@ -127,6 +127,9 @@ void pdtest_setup(void)
         (t_method)pdtest_result, gensym("result_float"),
         A_GIMME, 0);
     class_addmethod(pdtest_class,
+        (t_method)pdtest_result, gensym("result_bang"),
+        A_GIMME, 0);
+    class_addmethod(pdtest_class,
         (t_method)pdtest_start, gensym("start"),0);
     class_addmethod(pdtest_class,
         (t_method)pdtest_stop, gensym("stop"),0);
@@ -153,6 +156,7 @@ void *pdtest_new(void)
     inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("list"), gensym("result_list"));
     inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("symbol"), gensym("result_symbol"));
     inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("float"), gensym("result_float"));
+    inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("bang"), gensym("result_bang"));
     outlet_new(&x->x_obj, NULL);
     
     return (void*)x;
@@ -185,7 +189,7 @@ void pdtest_suite(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
 
 void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
 {
-  if (argc < 1) {   /* skip result was empty ??? */
+  if ((argc < 1) && (s != gensym("result_bang"))) {  /* skip result was empty ??? */
       error("pdtest: result message is empty"); return;}
   /* skip result if correspondent message was raw_message */
   if (pdtest_is_rawmessage(x)) { return; }
@@ -203,22 +207,20 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
         char result[256];
         atom_string(argv+i, result, 256);
         const char* resultstring = (const char*)result;
-        post("RESULT LIST: %s", resultstring);
         lua_pushstring(x->lua,resultstring);
         lua_rawseti(x->lua,-2,i+1);
-        post("RESULT + %s",resultstring);
     }
   } else if (s == gensym("result_symbol")) {
-    post("RESULT SYMBOL");
     char result[256];
     atom_string(argv, result, 256);
     const char* resultstring = (const char*)result;
-    post("RESULT SYM: %s", resultstring);
     lua_pushstring(x->lua,resultstring);
   } else if   (s == gensym("result_float")) {
     double result = (double)atom_getfloatarg(0,argc,argv);
-    post("RESULT FLOAT: %f",result);
     lua_pushnumber(x->lua, result);
+  } else if   (s == gensym("result_bang")) {
+    const char* resultstring = "bang";
+    lua_pushstring(x->lua, resultstring);
   }
   
   lua_rawseti(x->lua,-2,n+1);   /* push result message in pdtest.table */
