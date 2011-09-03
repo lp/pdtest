@@ -44,17 +44,16 @@ pdtest.suite = function(suite)
       local cmpmet = {}
       cmpmet.report = function(self,okmsg,failmsg,success,should,result)
         if type(should) == "table" then
-          if type(should[i]) == "table" then
+          if type(should[1]) == "table" then
             local nshould = {}
             for i,v in ipairs(should) do
-              nshould[i] = {}
-              if type(should[i]) == "table" then
-                nshould[i] = table.concat(should[i])
+              if type(v) == "table" then
+                nshould[i] = table.concat(v,", ")
               else
                 nshould[i] = "nil"
               end
             end
-            should = table.concat(nshould, "| ")
+            should = table.concat(nshould, " | ")
           else
             should = table.concat(should, ", ")
           end
