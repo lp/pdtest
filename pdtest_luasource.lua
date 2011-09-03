@@ -44,7 +44,20 @@ pdtest.suite = function(suite)
       local cmpmet = {}
       cmpmet.report = function(self,okmsg,failmsg,success,should,result)
         if type(should) == "table" then
-          should = table.concat(should, ", ")
+          if type(should[i]) == "table" then
+            local nshould = {}
+            for i,v in ipairs(should) do
+              nshould[i] = {}
+              if type(should[i]) == "table" then
+                nshould[i] = table.concat(should[i])
+              else
+                nshould[i] = "nil"
+              end
+            end
+            should = table.concat(nshould, "| ")
+          else
+            should = table.concat(should, ", ")
+          end
         elseif type(should) == "number" then
           should = tostring(should)
         elseif type(should) == "function" then
@@ -177,6 +190,57 @@ pdtest.suite = function(suite)
           end
         end
         return currentCase
+      end
+      
+      cmpmet.be_any = function(self,should)
+        currentTest.try = function(result)
+          local same = true
+          if type(should) == "table"  and
+            #should > 0 and type(should[1]) == "table" and
+            #should[1] > 0 and type(result) == "table" then
+            for i,v in ipairs(should) do
+              for si,sv in ipairs(v) do
+                if sv ~= result[si] then
+                  same = false
+                end
+              end
+              if same then
+                break
+              elseif i < #should then
+                same = true
+              end
+            end
+          elseif type(should) == "table"  and #should > 0 and type(should[1]) == "string" then
+            result_value = ""
+            if type(result) == "string" then
+              result_value = result
+            elseif type(result) == "number" then
+              result_value = tostring(result)
+            elseif type(result) == "table" and #result == 1 then
+              result_value = tostring(result[1])
+            else
+              return false, "Comparison result table needs to have only one member to be comparable with 'be_any': result is '"..type(result).."' of length "..tostring(#result)..""
+            end
+            should_set = set.new(should)
+            same = set.member(should_set,result_value)
+          elseif type(should) == "table"  and #should > 0 and type(should[1]) == "number" then
+            result_value = 0
+            if type(result) == "string" then
+              result_value = tonumber(result)
+            elseif type(result) == "number" then
+              result_value = result
+            elseif type(result) == "table" and #result == 1 then
+              result_value = tonumber(result[1])
+            else
+              return false, "Comparison result table needs to have only one member to be comparable with 'be_any': result is '"..type(result).."' of length "..tostring(#result)..""
+            end
+            should_set = set.new(should)
+            same = set.member(should_set,result_value)
+          else
+            return false, "Comparison data needs to be table: should is '"..type(should).."'"
+          end
+          return self:report(" is any "," is not any one ",same,should,result)
+        end
       end
       
       currentTest.should = {invert=false}
