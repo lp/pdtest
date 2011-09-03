@@ -301,7 +301,7 @@ function pdtest_yield()
     local result = table.remove(pdtest.results,1)
     current.result = result
     current.success, current.detail = current.try(current.result)
-    local nametag = ""..current.suite.name.." -> "..current.case.name.." < "..current.name.." > "
+    local nametag = ""..current.suite.name.." -> "..current.case.name.." >> "..current.detail
     if current.success then
       pdtest.post(nametag)
       pdtest.post("-> OK")
