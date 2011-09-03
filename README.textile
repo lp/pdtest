@@ -84,6 +84,10 @@ bc. .should:equal(                                          -- equal method test
 .should.not:resemble(                                   -- are equal and strings or numbers will match a tables first
     {"SOME", "OTHER", "MESSAGE", "LIST"})               -- member
 --
+.should:be_any({"A","B","C"})                           -- passes if any of the table's members equals the returned value
+                                                        -- tables of tables are allowed to match table results
+,should.nt:be_any({{1,2,3},{2,3,4},{3,4,5}})            -- not be any_
+--
 .should:match("%d+%s%a+")                               -- match method matches individual result atoms
                                                         -- against string pattern according to "lua's matching":http://www.lua.org/pil/20.2.html
                                                         -- mechanism.
