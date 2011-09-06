@@ -335,7 +335,7 @@ function pdtest_yield()
       pdtest.post("-> OK")
     else
       pdtest.post(nametag)
-      pdtest.post("x> FAILED |> "..current.detail)
+      pdtest.post("x> FAILED")
     end
   elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then
     return false
