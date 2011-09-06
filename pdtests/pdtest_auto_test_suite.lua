@@ -3,6 +3,9 @@ suite = pdtest.suite("Auto Test")
 suite.case("test lists"
   ).test({"A","B","C"}
     ).should:equal({"A","B","C"})
+suite.case("not test lists"
+  ).test({"A","B","C"}
+    ).should.nt:equal({"B","B","C"})
     
 suite.case("out lists"
   ).test(function()
@@ -35,3 +38,119 @@ suite.case("out bang"
   ).test(function()
     pdtest.out.bang()
   end).should:equal("bang")
+  
+suite.case("match list"
+  ).test({"A","B","C","D"}
+    ).should:match("^%u$")
+
+suite.case("not match list"
+  ).test({"A","B","C","D"}
+    ).should.nt:match("^%d$")
+
+suite.case("match string"
+  ).test("1 special string"
+    ).should:match("^%d%s%a+%s%a+$")
+
+suite.case("not match string"
+  ).test("1 special string"
+    ).should.nt:match("^%w+$")
+
+suite.case("match number"
+  ).test(286
+    ).should:match("^%d%d%d$")
+
+suite.case("not match number"
+  ).test(2990
+    ).should.nt:match("^%d%d%d$")
+    
+suite.case("resemble list"
+  ).test({"A","B","C","D"}
+    ).should:resemble({"B","C","D","A"})
+
+suite.case("not resemble list"
+  ).test({"A","B","B","D"}
+    ).should.nt:resemble({"B","C","D","A"})
+
+suite.case("resemble string"
+  ).test("okeedookie"
+    ).should:resemble("oKeeDooKIe")
+
+suite.case("not resemble string"
+  ).test("okeedooki"
+    ).should.nt:resemble("OkEEdOOkie")
+
+suite.case("string resemble number"
+  ).test("26"
+    ).should:resemble(26)
+
+suite.case("string not resemble number"
+  ).test("26"
+    ).should.nt:resemble(26.66)
+
+suite.case("number resemble string"
+  ).test(26
+    ).should:resemble("26")
+
+suite.case("number not resemble string"
+  ).test(26
+    ).should.nt:resemble("26.6")
+
+suite.case("resemble number"
+  ).test(26.66667
+    ).should:resemble(26.66,1)
+
+suite.case("not resemble number"
+  ).test(26
+    ).should.nt:resemble(26.66)
+
+suite.case("list resemble string"
+  ).test({"A","B","C","D"}
+    ).should:resemble("a")
+
+suite.case("list not resemble string"
+  ).test({"A","B","C","D"}
+    ).should.nt:resemble("B")
+
+suite.case("string resemble list"
+  ).test("A"
+    ).should:resemble({"a","b","c"})
+    
+suite.case("string not resemble list"
+  ).test("B"
+    ).should.nt:resemble({"a","b","c"})
+
+suite.case("list resemble number"
+  ).test({"2.666","3.3333","4.8989"}
+    ).should:resemble(2.66,1)
+
+suite.case("list not resemble number"
+  ).test({"2.666","3.3333","4.8989"}
+    ).should.nt:resemble(3.33,1)
+
+suite.case("number resemble list"
+  ).test(3.333
+    ).should:resemble({3.33,2.66,1.8787},1)
+    
+suite.case("number not resemble list"
+  ).test(3.333
+    ).should.nt:resemble({3.33,2.66,1.8787})
+
+suite.case("be_any number"
+  ).test(4
+    ).should:be_any({1,2,3,4,5,6,7,8,9})
+
+suite.case("not be_any number"
+  ).test(4
+    ).should.nt:be_any({1,2,3,5,6,7,8,9})
+    
+suite.case("be_any string"
+  ).test("bozo"
+    ).should:be_any({"ronald","dingo","bozo"})
+    
+suite.case("not be_any string"
+  ).test("bozo"
+    ).should.nt:be_any({"ronald","dingo","marcel"})
+    
+suite.case("be_any table"
+  ).test({"A","B","C","D"}
+    ).should:be_any({{"E","F","G"},{"A","B","C","D"},{"X","Y","Z"}})
