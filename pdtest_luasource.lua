@@ -114,7 +114,7 @@ pdtest.suite = function(suite)
           elseif type(should) == "string" and type(result) == "string" then
             same = should:lower() == result:lower()
           elseif type(should) == "number" and type(result) == "number" then
-            precision = 0
+            local precision = 0
             if type(p) == "number" then
               precision = p
             end
@@ -218,7 +218,7 @@ pdtest.suite = function(suite)
               end
             end
           elseif type(should) == "table"  and #should > 0 and type(should[1]) == "string" then
-            result_value = ""
+            local result_value = ""
             if type(result) == "string" then
               result_value = result
             elseif type(result) == "number" then
@@ -228,10 +228,10 @@ pdtest.suite = function(suite)
             else
               return false, "Comparison result table needs to have only one member to be comparable with 'be_any': result is '"..type(result).."' of length "..tostring(#result)..""
             end
-            should_set = set.new(should)
+            local should_set = set.new(should)
             same = set.member(should_set,result_value)
           elseif type(should) == "table"  and #should > 0 and type(should[1]) == "number" then
-            result_value = 0
+            local result_value = 0
             if type(result) == "string" then
               result_value = tonumber(result)
             elseif type(result) == "number" then
@@ -241,7 +241,7 @@ pdtest.suite = function(suite)
             else
               return false, "Comparison result table needs to have only one member to be comparable with 'be_any': result is '"..type(result).."' of length "..tostring(#result)..""
             end
-            should_set = set.new(should)
+            local should_set = set.new(should)
             same = set.member(should_set,result_value)
           else
             return false, "Comparison data needs to be table: should is '"..type(should).."'"
