@@ -123,12 +123,32 @@ pdtest.suite = function(suite)
             same = should == result
           elseif (type(should) == "string" and type(result) == "number") or
             (type(result) == "string" and type(should) == "number") then
-            same = tostring(should) == tostring(result)
+            if type(p) == "number" then
+              same = math.round(tonumber(should),p) == math.round(tonumber(result),p)
+            else
+              same = tonumber(should) == tonumber(result)
+            end
           else
             if type(should) == "table" then
-              same = tostring(should[1]) == tostring(result)
+              if type(should[1]) == "number" or type(result) == "number" then
+                if type(p) == "number" then
+                  same = math.round(tonumber(should[1]),p) == math.round(tonumber(result),p)
+                else
+                  same = tonumber(should[1]) == tonumber(result)
+                end
+              else
+                same = tostring(should[1]):lower() == tostring(result):lower()
+              end
             elseif type(result) == "table" then
-              same = tostring(result[1]) == tostring(should)
+              if type(result[1]) == "number" or type(should) == "number" then
+                if type(p) == "number" then
+                  same = math.round(tonumber(result[1]),p) == math.round(tonumber(should),p)
+                else
+                  same = tonumber(result[1]) == tonumber(should)
+                end
+              else
+                same = tostring(result[1]):lower() == tostring(should):lower()
+              end
             end
           end
           return self:report(" does resemble "," does not resemble ",same,should,result)
