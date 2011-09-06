@@ -79,7 +79,8 @@ bc. .should:equal(                                          -- equal method test
     {"TEST","UNDESIRED","OUTPUT","MESSAGE"})
 --
 .should:resemble(                                       -- resemble is close to equal, 2 list will resemble if 
-    {"SOME","MESSAGE","LIST"})                          -- they have the same members even with different indexes
+    {"SOME","MESSAGE","LIST"})                          -- they have the same members even with different indexes,
+                                                        -- strings will match event when case differs,
                                                         -- a number and a string will match if their string values
 .should.not:resemble(                                   -- are equal and strings or numbers will match a tables first
     {"SOME", "OTHER", "MESSAGE", "LIST"})               -- member
