@@ -101,11 +101,12 @@ static int luafunc_pdtest_register(lua_State *lua);
 static int luafunc_pdtest_unregister(lua_State *lua);
 
 /* Lua source code */
-const char* pdtest_lua_init;
-const char* pdtest_lua_next;
-const char* pdtest_lua_yield;
-const char* pdtest_lua_report;
-const char* pdtest_lua_stdlib_set;
+static const char* pdtest_lua_init;
+static const char* pdtest_lua_next;
+static const char* pdtest_lua_yield;
+static const char* pdtest_lua_report;
+static const char* pdtest_lua_stdlib_set;
+static const char* pdtest_lua_stdlib_math;
 
 void pdtest_setup(void)
 {
@@ -422,6 +423,11 @@ static void pdtest_luasetup(t_pdtest *x)
     if (err) {
         if (lua_isstring(x->lua,-1))
             error("error loading 'pdtest_lua_stdlib_set': %s", lua_tostring(x->lua,-1));
+    }
+    err = luaL_dostring(x->lua, pdtest_lua_stdlib_math);
+    if (err) {
+        if (lua_isstring(x->lua,-1))
+            error("error loading 'pdtest_lua_stdlib_math': %s", lua_tostring(x->lua,-1));
     }
     err = luaL_dostring(x->lua, pdtest_lua_init);
     if (err) {
@@ -844,7 +850,7 @@ static int luafunc_pdtest_unregister(lua_State *lua)
  *                                               *
  *************************************************/
 
-const char* pdtest_lua_init = "\n"
+static const char* pdtest_lua_init = "\n"
 "pdtest.suite = function(suite)\n"
 "  local currentSuite = {name=suite, queue={}, dones={}}\n"
 "  \n"
@@ -947,7 +953,7 @@ const char* pdtest_lua_init = "\n"
 "        return currentCase\n"
 "      end\n"
 "      \n"
-"      cmpmet.resemble = function(self,should)\n"
+"      cmpmet.resemble = function(self,should,p)\n"
 "        currentTest.try = function(result)\n"
 "          local same = true\n"
 "          if type(should) == \"table\" and type(result) == \"table\" then\n"
@@ -956,6 +962,12 @@ const char* pdtest_lua_init = "\n"
 "            same = set.equal(should_set,result_set)\n"
 "          elseif type(should) == \"string\" and type(result) == \"string\" then\n"
 "            same = should:lower() == result:lower()\n"
+"          elseif type(should) == \"number\" and type(result) == \"number\" then\n"
+"            precision = 0\n"
+"            if type(p) == \"number\" then\n"
+"              precision = p\n"
+"            end\n"
+"            same = math.round(should,precision) == math.round(result,precision)\n"
 "          elseif type(should) == type(result) then\n"
 "            same = should == result\n"
 "          elseif (type(should) == \"string\" and type(result) == \"number\") or\n"
@@ -1106,7 +1118,7 @@ const char* pdtest_lua_init = "\n"
 "  return currentSuite\n"
 "end\n";
 
-const char* pdtest_lua_next = "\n"
+static const char* pdtest_lua_next = "\n"
 "function pdtest_next()\n"
 "  if table.getn(pdtest.queue) == 0 then\n"
 "    return false\n"
@@ -1153,7 +1165,7 @@ const char* pdtest_lua_next = "\n"
 "  return true\n"
 "end\n";
 
-const char* pdtest_lua_yield = "\n"
+static const char* pdtest_lua_yield = "\n"
 "function pdtest_yield()\n"
 "  if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then\n"
 "    local current = table.remove(pdtest.currents,1)\n"
@@ -1174,7 +1186,7 @@ const char* pdtest_lua_yield = "\n"
 "  return true\n"
 "end\n";
 
-const char* pdtest_lua_report = "\n"
+static const char* pdtest_lua_report = "\n"
 "function pdtest_report()\n"
 "  if table.getn(pdtest.currents) > 0 then\n"
 "    return false\n"
@@ -1206,7 +1218,7 @@ const char* pdtest_lua_report = "\n"
 "  return true\n"
 "end\n";
 
-const char* pdtest_lua_stdlib_set = "\n"
+static const char* pdtest_lua_stdlib_set = "\n"
 "-- Set datatype.\n"
 "module (\"set\", package.seeall)\n"
 "\n"
@@ -1354,4 +1366,33 @@ const char* pdtest_lua_stdlib_set = "\n"
 "metatable.__le = subset\n"
 "-- set < table = proper subset\n"
 "metatable.__lt = propersubset\n";
+
+static const char* pdtest_lua_stdlib_math = "\n"
+"--- Additions to the math module.\n"
+"module (\"math\", package.seeall)\n"
+"\n"
+"\n"
+"local _floor = floor\n"
+"\n"
+"--- Extend <code>math.floor</code> to take the number of decimal places.\n"
+"-- @param n number\n"
+"-- @param p number of decimal places to truncate to (default: 0)\n"
+"-- @return <code>n</code> truncated to <code>p</code> decimal places\n"
+"function floor (n, p)\n"
+"  if p and p ~= 0 then\n"
+"    local e = 10 ^ p\n"
+"    return _floor (n * e) / e\n"
+"  else\n"
+"    return _floor (n)\n"
+"  end\n"
+"end\n"
+"\n"
+"--- Round a number to a given number of decimal places\n"
+"-- @param n number\n"
+"-- @param p number of decimal places to round to (default: 0)\n"
+"-- @return <code>n</code> rounded to <code>p</code> decimal places\n"
+"function round (n, p)\n"
+"  local e = 10 ^ (p or 0)\n"
+"  return _floor (n * e + 0.5) / e\n"
+"end\n";
 

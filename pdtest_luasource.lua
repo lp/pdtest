@@ -104,7 +104,7 @@ pdtest.suite = function(suite)
         return currentCase
       end
       
-      cmpmet.resemble = function(self,should)
+      cmpmet.resemble = function(self,should,p)
         currentTest.try = function(result)
           local same = true
           if type(should) == "table" and type(result) == "table" then
@@ -113,6 +113,12 @@ pdtest.suite = function(suite)
             same = set.equal(should_set,result_set)
           elseif type(should) == "string" and type(result) == "string" then
             same = should:lower() == result:lower()
+          elseif type(should) == "number" and type(result) == "number" then
+            precision = 0
+            if type(p) == "number" then
+              precision = p
+            end
+            same = math.round(should,precision) == math.round(result,precision)
           elseif type(should) == type(result) then
             same = should == result
           elseif (type(should) == "string" and type(result) == "number") or
