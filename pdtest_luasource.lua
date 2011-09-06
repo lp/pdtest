@@ -111,6 +111,8 @@ pdtest.suite = function(suite)
             should_set = set.new(should)
             result_set = set.new(result)
             same = set.equal(should_set,result_set)
+          elseif type(should) == "string" and type(result) == "string" then
+            same = should:lower() == result:lower()
           elseif type(should) == type(result) then
             same = should == result
           elseif (type(should) == "string" and type(result) == "number") or

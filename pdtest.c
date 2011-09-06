@@ -38,7 +38,7 @@ THE SOFTWARE.
 
 #define PDTEST_MAJOR 0
 #define PDTEST_MINOR 6
-#define PDTEST_PATCH 3
+#define PDTEST_PATCH 6
 #define PD_MAJOR_VERSION 0
 #define PD_MINOR_VERSION 42
 
@@ -954,6 +954,8 @@ const char* pdtest_lua_init = "\n"
 "            should_set = set.new(should)\n"
 "            result_set = set.new(result)\n"
 "            same = set.equal(should_set,result_set)\n"
+"          elseif type(should) == \"string\" and type(result) == \"string\" then\n"
+"            same = should:lower() == result:lower()\n"
 "          elseif type(should) == type(result) then\n"
 "            same = should == result\n"
 "          elseif (type(should) == \"string\" and type(result) == \"number\") or\n"
