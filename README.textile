@@ -105,7 +105,7 @@ bc. .should:match("%d+%s%a+")                               -- match method matc
 
 h4. numeric comparisons
 
-h5. >
+h5. more than
 
 bc. .should:be_more(10)                                     -- the greater than test, all four examples are equivalent
 .should:be_more("10")                                   -- and results are treated in a similar manner.  Everything gets
@@ -113,7 +113,7 @@ bc. .should:be_more(10)                                     -- the greater than 
 .should:be_more({"10"})                                 -- is compared
 .should.nt:be_more(22)                                  -- negation works as well
 
-h5. <
+h5. less than
 bc. .should:be_less(10)
 .should:be_less("10")
 .should:be_less({10})
