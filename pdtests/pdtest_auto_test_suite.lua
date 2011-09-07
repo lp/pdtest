@@ -38,7 +38,95 @@ suite.case("out bang"
   ).test(function()
     pdtest.out.bang()
   end).should:equal("bang")
-  
+
+suite.case("be more as numbers"
+  ).test(3
+    ).should:be_more(2)
+
+suite.case("not be more as numbers"
+  ).test(2
+    ).should.nt:be_more(3)
+
+suite.case("be more as string and number"
+  ).test("10"
+    ).should:be_more(2)
+
+suite.case("not be more as string and number"
+  ).test("10"
+    ).should.nt:be_more(11)
+
+suite.case("be more as number and string"
+  ).test(10
+    ).should:be_more("2")
+
+suite.case("not be more as number and string"
+  ).test(10
+    ).should.nt:be_more("11")
+
+suite.case("be more as table number and number"
+  ).test({10,1,2}
+    ).should:be_more(5)
+
+suite.case("not be more as table number and number"
+  ).test({10,1,2}
+    ).should.nt:be_more(11)
+
+suite.case("be more as table number and string"
+  ).test({10,1,2}
+    ).should:be_more("5")
+
+suite.case("not be more as table number and string"
+  ).test({10,1,2}
+    ).should.nt:be_more("11")
+
+suite.case("be more as table number and table number"
+  ).test({10,1,2}
+    ).should:be_more({5,100,200})
+
+suite.case("not be more as table number and table number"
+  ).test({10,1,2}
+    ).should.nt:be_more({11,0,1})
+
+suite.case("be more as table number and table string"
+  ).test({10,1,2}
+    ).should:be_more({"5","100","200"})
+
+suite.case("not be more as table number and table string"
+  ).test({10,1,2}
+    ).should.nt:be_more({"11","0","1"})
+
+suite.case("be more as table string and number"
+  ).test({"10","1","2"}
+    ).should:be_more(5)
+
+suite.case("not be more as table string and number"
+  ).test({"10","1","2"}
+    ).should.nt:be_more(11)
+
+suite.case("be more as table string and string"
+  ).test({"10","1","2"}
+    ).should:be_more("5")
+
+suite.case("not be more as table string and string"
+  ).test({"10","1","2"}
+    ).should.nt:be_more("11")
+
+suite.case("be more as table string and table number"
+  ).test({"10","1","2"}
+    ).should:be_more({5,100,200})
+
+suite.case("not be more as table string and table number"
+  ).test({"10","1","2"}
+    ).should.nt:be_more({11,0,1})
+
+suite.case("be more as table string and table string"
+  ).test({"10","1","2"}
+    ).should:be_more({"5","100","200"})
+
+suite.case("not be more as table string and table string"
+  ).test({"10","1","2"}
+    ).should.nt:be_more({"11","0","1"})
+
 suite.case("match list"
   ).test({"A","B","C","D"}
     ).should:match("^%u$")
