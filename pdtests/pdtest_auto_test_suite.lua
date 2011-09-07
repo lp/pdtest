@@ -127,6 +127,94 @@ suite.case("not be more as table string and table string"
   ).test({"10","1","2"}
     ).should.nt:be_more({"11","0","1"})
 
+suite.case("be less as numbers"
+  ).test(3
+    ).should:be_less(4)
+
+suite.case("not be less as numbers"
+  ).test(4
+    ).should.nt:be_less(3)
+
+suite.case("be less as string and number"
+  ).test("10"
+    ).should:be_less(11)
+
+suite.case("not be less as string and number"
+  ).test("10"
+    ).should.nt:be_less(9)
+
+suite.case("be less as number and string"
+  ).test(10
+    ).should:be_less("11")
+
+suite.case("not be less as number and string"
+  ).test(10
+    ).should.nt:be_less("9")
+
+suite.case("be less as table number and number"
+  ).test({10,1,2}
+    ).should:be_less(11)
+
+suite.case("not be less as table number and number"
+  ).test({10,1,2}
+    ).should.nt:be_less(9)
+
+suite.case("be less as table number and string"
+  ).test({10,1,2}
+    ).should:be_less("11")
+
+suite.case("not be less as table number and string"
+  ).test({10,1,2}
+    ).should.nt:be_less("9")
+
+suite.case("be less as table number and table number"
+  ).test({10,1,2}
+    ).should:be_less({11,100,200})
+
+suite.case("not be less as table number and table number"
+  ).test({10,1,2}
+    ).should.nt:be_less({9,0,1})
+
+suite.case("be less as table number and table string"
+  ).test({10,1,2}
+    ).should:be_less({"20","100","200"})
+
+suite.case("not be less as table number and table string"
+  ).test({10,1,2}
+    ).should.nt:be_less({"5","0","1"})
+
+suite.case("be less as table string and number"
+  ).test({"10","1","2"}
+    ).should:be_less(20)
+
+suite.case("not be less as table string and number"
+  ).test({"10","1","2"}
+    ).should.nt:be_less(5)
+
+suite.case("be less as table string and string"
+  ).test({"10","1","2"}
+    ).should:be_less("20")
+
+suite.case("not be less as table string and string"
+  ).test({"10","1","2"}
+    ).should.nt:be_less("5")
+
+suite.case("be less as table string and table number"
+  ).test({"10","1","2"}
+    ).should:be_less({20,100,200})
+
+suite.case("not be less as table string and table number"
+  ).test({"10","1","2"}
+    ).should.nt:be_less({5,0,1})
+
+suite.case("be less as table string and table string"
+  ).test({"10","1","2"}
+    ).should:be_less({"20","100","200"})
+
+suite.case("not be less as table string and table string"
+  ).test({"10","1","2"}
+    ).should.nt:be_less({"5","0","1"})
+
 suite.case("match list"
   ).test({"A","B","C","D"}
     ).should:match("^%u$")
