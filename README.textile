@@ -98,9 +98,9 @@ bc. .should:be_any({"A","B","C"})                           -- passes if any of 
 
 h4. pattern matching
 
+p. According to Lua's "pattern matching syntax":http://www.lua.org/pil/20.2.html
+
 bc. .should:match("%d+%s%a+")                               -- match method matches individual result atoms
-                                                        -- against string pattern according to "lua's matching":http://www.lua.org/pil/20.2.html
-                                                        -- mechanism.
 .should.nt:match("%d+%s%a+")                            -- not match method
 
 h4. numeric comparisons
