@@ -215,6 +215,182 @@ suite.case("not be less as table string and table string"
   ).test({"10","1","2"}
     ).should.nt:be_less({"5","0","1"})
 
+suite.case("be more or equal as numbers"
+  ).test(3
+    ).should:be_more_or_equal(2)
+
+suite.case("not be more or equal as numbers"
+  ).test(2
+    ).should.nt:be_more_or_equal(3)
+
+suite.case("be more or equal as string and number"
+  ).test("10"
+    ).should:be_more_or_equal(10)
+
+suite.case("not be more or equal as string and number"
+  ).test("10"
+    ).should.nt:be_more_or_equal(11)
+
+suite.case("be more or equal as number and string"
+  ).test(10
+    ).should:be_more_or_equal("10")
+
+suite.case("not be more or equal as number and string"
+  ).test(10
+    ).should.nt:be_more_or_equal("11")
+
+suite.case("be more or equal as table number and number"
+  ).test({10,1,2}
+    ).should:be_more_or_equal(5)
+
+suite.case("not be more or equal as table number and number"
+  ).test({10,1,2}
+    ).should.nt:be_more_or_equal(11)
+
+suite.case("be more or equal as table number and string"
+  ).test({10,1,2}
+    ).should:be_more_or_equal("10")
+
+suite.case("not be more or equal as table number and string"
+  ).test({10,1,2}
+    ).should.nt:be_more_or_equal("11")
+
+suite.case("be more or equal as table number and table number"
+  ).test({10,1,2}
+    ).should:be_more_or_equal({5,100,200})
+
+suite.case("not be more or equal as table number and table number"
+  ).test({10,1,2}
+    ).should.nt:be_more_or_equal({11,0,1})
+
+suite.case("be more or equal as table number and table string"
+  ).test({10,1,2}
+    ).should:be_more_or_equal({"10","100","200"})
+
+suite.case("not be more or equal as table number and table string"
+  ).test({10,1,2}
+    ).should.nt:be_more_or_equal({"11","0","1"})
+
+suite.case("be more or equal as table string and number"
+  ).test({"10","1","2"}
+    ).should:be_more_or_equal(5)
+
+suite.case("not be more or equal as table string and number"
+  ).test({"10","1","2"}
+    ).should.nt:be_more_or_equal(11)
+
+suite.case("be more or equal as table string and string"
+  ).test({"10","1","2"}
+    ).should:be_more_or_equal("10")
+
+suite.case("not be more or equal as table string and string"
+  ).test({"10","1","2"}
+    ).should.nt:be_more_or_equal("11")
+
+suite.case("be more or equal as table string and table number"
+  ).test({"10","1","2"}
+    ).should:be_more_or_equal({5,100,200})
+
+suite.case("not be more or equal as table string and table number"
+  ).test({"10","1","2"}
+    ).should.nt:be_more_or_equal({11,0,1})
+
+suite.case("be more or equal as table string and table string"
+  ).test({"10","1","2"}
+    ).should:be_more_or_equal({"10","100","200"})
+
+suite.case("not be more or equal as table string and table string"
+  ).test({"10","1","2"}
+    ).should.nt:be_more_or_equal({"11","0","1"})
+
+suite.case("be less or equal as numbers"
+  ).test(3
+    ).should:be_less_or_equal(4)
+
+suite.case("not be less or equal as numbers"
+  ).test(4
+    ).should.nt:be_less_or_equal(3)
+
+suite.case("be less or equal as string and number"
+  ).test("10"
+    ).should:be_less_or_equal(10)
+
+suite.case("not be less or equal as string and number"
+  ).test("10"
+    ).should.nt:be_less_or_equal(9)
+
+suite.case("be less or equal as number and string"
+  ).test(10
+    ).should:be_less_or_equal("11")
+
+suite.case("not be less or equal as number and string"
+  ).test(10
+    ).should.nt:be_less_or_equal("9")
+
+suite.case("be less or equal as table number and number"
+  ).test({10,1,2}
+    ).should:be_less_or_equal(10)
+
+suite.case("not be less or equal as table number and number"
+  ).test({10,1,2}
+    ).should.nt:be_less_or_equal(9)
+
+suite.case("be less or equal as table number and string"
+  ).test({10,1,2}
+    ).should:be_less_or_equal("11")
+
+suite.case("not be less or equal as table number and string"
+  ).test({10,1,2}
+    ).should.nt:be_less_or_equal("9")
+
+suite.case("be less or equal as table number and table number"
+  ).test({10,1,2}
+    ).should:be_less_or_equal({10,100,200})
+
+suite.case("not be less or equal as table number and table number"
+  ).test({10,1,2}
+    ).should.nt:be_less_or_equal({9,0,1})
+
+suite.case("be less or equal as table number and table string"
+  ).test({10,1,2}
+    ).should:be_less_or_equal({"20","100","200"})
+
+suite.case("not be less or equal as table number and table string"
+  ).test({10,1,2}
+    ).should.nt:be_less_or_equal({"5","0","1"})
+
+suite.case("be less or equal as table string and number"
+  ).test({"10","1","2"}
+    ).should:be_less_or_equal(10)
+
+suite.case("not be less or equal as table string and number"
+  ).test({"10","1","2"}
+    ).should.nt:be_less_or_equal(5)
+
+suite.case("be less or equal as table string and string"
+  ).test({"10","1","2"}
+    ).should:be_less_or_equal("20")
+
+suite.case("not be less or equal as table string and string"
+  ).test({"10","1","2"}
+    ).should.nt:be_less_or_equal("5")
+
+suite.case("be less or equal as table string and table number"
+  ).test({"10","1","2"}
+    ).should:be_less_or_equal({10,100,200})
+
+suite.case("not be less or equal as table string and table number"
+  ).test({"10","1","2"}
+    ).should.nt:be_less_or_equal({5,0,1})
+
+suite.case("be less or equal as table string and table string"
+  ).test({"10","1","2"}
+    ).should:be_less_or_equal({"20","100","200"})
+
+suite.case("not be less or equal as table string and table string"
+  ).test({"10","1","2"}
+    ).should.nt:be_less_or_equal({"5","0","1"})
+
 suite.case("match list"
   ).test({"A","B","C","D"}
     ).should:match("^%u$")
