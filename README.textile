@@ -71,31 +71,49 @@ mycase.test({"MY","TEST","MESSAGE"}                     -- tests can also be rev
     ).should.nt:equal(                                  -- from the .should.nt namespace
         {"TEST","NOT","DESIRED","OUTPUT","MESSAGE"})
 
-h3. Conditions methods
+h2. Conditions methods
+
+h4. equality
 
 bc. .should:equal(                                          -- equal method test for message content equality
     {"TEST","DESIRED","OUTPUT","MESSAGE"})
 .should.nt:equal(                                       -- not equal method
     {"TEST","UNDESIRED","OUTPUT","MESSAGE"})
---
-.should:resemble(                                       -- resemble is close to equal, 2 list will resemble if 
+
+h4. similarity
+
+bc. .should:resemble(                                       -- resemble is close to equal, 2 list will resemble if 
     {"SOME","MESSAGE","LIST"})                          -- they have the same members even with different indexes,
                                                         -- numbers will be rounded according to a decimal precision
 .should:resemble(26.6666, 3)                            -- argument, strings will match event when case differs,
                                                         -- a number and a string will match if their string values
 .should.not:resemble(                                   -- are equal and strings or numbers will match a tables first
     {"SOME", "OTHER", "MESSAGE", "LIST"})               -- member
---
-.should:be_any({"A","B","C"})                           -- passes if any of the table's members equals the returned value
+
+h4. possibility
+
+bc. .should:be_any({"A","B","C"})                           -- passes if any of the table's members equals the returned value
                                                         -- tables of tables are allowed to match table results
-,should.nt:be_any({{1,2,3},{2,3,4},{3,4,5}})            -- not be any_
---
-.should:match("%d+%s%a+")                               -- match method matches individual result atoms
+.should.nt:be_any({{1,2,3},{2,3,4},{3,4,5}})            -- not be any_
+
+h4. pattern matching
+
+bc. .should:match("%d+%s%a+")                               -- match method matches individual result atoms
                                                         -- against string pattern according to "lua's matching":http://www.lua.org/pil/20.2.html
                                                         -- mechanism.
 .should.nt:match("%d+%s%a+")                            -- not match method
---
-.should:be_true(function(result)                        -- be_true method test if provided function returns
+
+h4. numeric comparisons
+
+bc. .should:be_more(10)                                     -- the greater than test, all four examples are equivalent
+.should:be_more("10")                                   -- and results are treated in a similar manner.  Everything gets
+.should:be_more({10})                                   -- converted to number and in the case of list only the first
+.should:be_more({"10"})                                 -- is compared
+.should.nt:be_more(22)                                  -- negation works as well
+
+h4. custom truth
+
+bc. .should:be_true(function(result)                        -- be_true method test if provided function returns
     if result[1] == "OK" then                           -- true or false
         return true
     else
