@@ -217,6 +217,19 @@ pdtest.suite = function(suite)
         return currentCase
       end
       
+      cmpmet.be_more_or_equal = function(self,should)
+        currentTest.try = function(result)
+          local tshould, tresult = self:numbers(should,result)
+          if type(tshould) ~= "nil" and type(tresult) ~= "nil" then
+            local less =  tresult >= tshould
+            return self:report(" is more or equal than "," is not more or equal than ", less,should,result)
+          else
+            return false, "Comparison data needs to be tables, numbers or strings: should is '"..type(should).."', result is '"..type(result).."'"
+          end
+        end
+        return currentCase
+      end
+      
       cmpmet.be_nil = function(self)
         currentTest.try = function(result)
           local same = true
