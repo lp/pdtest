@@ -84,6 +84,42 @@ pdtest.suite = function(suite)
         end
       end
       
+      cmpmet.numbers = function(self,should,result)
+        if type(should) == "number" and type(result) == "number" then
+          return should, result
+        elseif (type(should) == "number" or type(should) == "string") and
+          (type(result) == "number" or type(result) == "string") then
+          return tonumber(should), tonumber(result)
+        else
+          local tshould = nil
+          local tresult = nil
+          if type(should) == "table" then
+            if type(should[1]) == "number" then
+              tshould = should[1]
+            elseif type(should[1]) == "string" then
+              tshould = tonumber(should[1])
+            end
+          elseif type(should) == "string" then
+            tshould = tonumber(should)
+          elseif type(should) == "number" then
+            tshould = should
+          end
+
+          if type(result) == "table" then
+            if type(result[1]) == "number" then
+              tresult = result[1]
+            elseif type(result[1]) == "string" then
+              tresult = tonumber(result[1])
+            end
+          elseif type(result) == "string" then
+            tresult = tonumber(result)
+          elseif type(result) == "number" then
+            tresult = result
+          end
+          return tshould, tresult
+        end
+      end
+      
       cmpmet.equal = function(self,should)
         currentTest.try = function(result)
           local same = true
@@ -153,6 +189,19 @@ pdtest.suite = function(suite)
           end
           return self:report(" does resemble "," does not resemble ",same,should,result)
         end
+      end
+      
+      cmpmet.be_more = function(self,should)
+        currentTest.try = function(result)
+          local tshould, tresult = self:numbers(should,result)
+          if type(tshould) ~= "nil" and type(tresult) ~= "nil" then
+            local more =  tresult > tshould
+            return self:report(" is more than "," is not more than ", more,should,result)
+          else
+            return false, "Comparison data needs to be tables, numbers or strings: should is '"..type(should).."', result is '"..type(result).."'"
+          end
+        end
+        return currentCase
       end
       
       cmpmet.be_nil = function(self)
