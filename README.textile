@@ -105,11 +105,20 @@ bc. .should:match("%d+%s%a+")                               -- match method matc
 
 h4. numeric comparisons
 
+h5. >
+
 bc. .should:be_more(10)                                     -- the greater than test, all four examples are equivalent
 .should:be_more("10")                                   -- and results are treated in a similar manner.  Everything gets
 .should:be_more({10})                                   -- converted to number and in the case of list only the first
 .should:be_more({"10"})                                 -- is compared
 .should.nt:be_more(22)                                  -- negation works as well
+
+h5. <
+bc. .should:be_less(10)
+.should:be_less("10")
+.should:be_less({10})
+.should:be_less({"10"})
+.should.nt:be_less(22)
 
 h4. custom truth
 
@@ -128,7 +137,7 @@ end)
     end
 end)
 
-h3. Example Tests Suite
+h2. Example Tests Suite
 
 !https://github.com/lp/pdtest/raw/master/img/pdtest_example.png!
 
