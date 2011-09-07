@@ -38,7 +38,7 @@ THE SOFTWARE.
 
 #define PDTEST_MAJOR 0
 #define PDTEST_MINOR 7
-#define PDTEST_PATCH 1
+#define PDTEST_PATCH 4
 #define PD_MAJOR_VERSION 0
 #define PD_MINOR_VERSION 42
 
@@ -1070,8 +1070,21 @@ static const char* pdtest_lua_init = "\n"
 "        currentTest.try = function(result)\n"
 "          local tshould, tresult = self:numbers(should,result)\n"
 "          if type(tshould) ~= \"nil\" and type(tresult) ~= \"nil\" then\n"
-"            local less =  tresult >= tshould\n"
-"            return self:report(\" is more or equal than \",\" is not more or equal than \", less,should,result)\n"
+"            local more =  tresult >= tshould\n"
+"            return self:report(\" is more or equal than \",\" is not more or equal than \", more,should,result)\n"
+"          else\n"
+"            return false, \"Comparison data needs to be tables, numbers or strings: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
+"          end\n"
+"        end\n"
+"        return currentCase\n"
+"      end\n"
+"      \n"
+"      cmpmet.be_less_or_equal = function(self,should)\n"
+"        currentTest.try = function(result)\n"
+"          local tshould, tresult = self:numbers(should,result)\n"
+"          if type(tshould) ~= \"nil\" and type(tresult) ~= \"nil\" then\n"
+"            local less =  tresult <= tshould\n"
+"            return self:report(\" is less or equal than \",\" is not less or equal than \", less,should,result)\n"
 "          else\n"
 "            return false, \"Comparison data needs to be tables, numbers or strings: should is '\"..type(should)..\"', result is '\"..type(result)..\"'\"\n"
 "          end\n"
