@@ -121,6 +121,23 @@ bc. .should:be_less(10)
 .should:be_less({"10"})
 .should.nt:be_less(22)
 
+h5. >=
+
+bc. .should:be_more_or_equal(10)
+.should:be_more_or_equal("10")
+.should:be_more_or_equal({10})
+.should:be_more_or_equal({"10"})
+.should.nt:be_more_or_equal(22)
+
+
+h5. <=
+
+bc. .should:be_less_or_equal(10)
+.should:be_less_or_equal("10")
+.should:be_less_or_equal({10})
+.should:be_less_or_equal({"10"})
+.should.nt:be_less_or_equal(22)
+
 h4. custom truth
 
 bc. .should:be_true(function(result)                        -- be_true method test if provided function returns
