@@ -213,7 +213,7 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
   if (pdtest_is_rawmessage(x)) { return; }
   
   /* gets pdtest.results table onto the stack*/
-  lua_getglobal(x->lua, "pdtest");
+  lua_getglobal(x->lua, "_pdtest");
   lua_getfield(x->lua, -1, "results");
   int n = luaL_getn(x->lua,-1);
   
@@ -268,7 +268,7 @@ void pdtest_reset(t_pdtest *x, t_symbol *s)
     (void) s; /* get rid of parameter warning */
     
     /* set empty tables as new test containers */
-    lua_getglobal(x->lua,"pdtest");
+    lua_getglobal(x->lua,"_pdtest");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "queue");
     lua_newtable(x->lua);
@@ -293,9 +293,11 @@ static void pdtest_run(t_pdtest *x)
 
 static void pdtest_next(t_pdtest * x)
 {
-    /* prepares the stack to call pdtest.next() */
-    lua_getglobal(x->lua,"pdtest_errorHandler");
-    lua_getglobal(x->lua, "pdtest_next");
+    /* prepares the stack to call _pdtest.next() */
+    lua_getglobal(x->lua,"_pdtest");
+    lua_getfield(x->lua, -1, "errorHandler");
+    lua_getfield(x->lua, -2, "next");
+    lua_remove(x->lua,-3);
     if (!lua_isfunction(x->lua,-1)) {
       lua_pop(x->lua,2);
       error("pdtest: no pdtest_next function!!!");
@@ -318,9 +320,11 @@ static void pdtest_next(t_pdtest * x)
 
 static void pdtest_yield(t_pdtest * x)
 {
-    /* prepares the stack to call pdtest.yield() */
-    lua_getglobal(x->lua,"pdtest_errorHandler");
-    lua_getglobal(x->lua, "pdtest_yield");
+    /* prepares the stack to call _pdtest.yield() */
+    lua_getglobal(x->lua,"_pdtest");
+    lua_getfield(x->lua, -1, "errorHandler");
+    lua_getfield(x->lua, -2, "yield");
+    lua_remove(x->lua,-3);
     if (!lua_isfunction(x->lua,-1)) {
       lua_pop(x->lua,2);
       error("pdtest: no pdtest_yield function!!!");
@@ -339,7 +343,7 @@ static void pdtest_yield(t_pdtest * x)
                 pdtest_stop(x, gensym("yield"));
                 pdtest_report(x);
             }
-        } else { error("pdtest: pdtest.yield() didn't return a bool??"); }
+        } else { error("pdtest: _pdtest.yield() didn't return a bool??"); }
         lua_pop(x->lua,1);  /* clean stack from bool result */
     }
 }
@@ -364,18 +368,14 @@ static void pdtest_luasetup(t_pdtest *x)
     x->lua = lua_open();
     luaL_openlibs(x->lua);
     
-    /* prepare global pdtest namespace */
+    /* prepare global _ namespace */
     lua_newtable(x->lua);
     lua_pushcfunction(x->lua, luafunc_pdtest_error);
     lua_setfield(x->lua, -2, "error");
     lua_pushcfunction(x->lua, luafunc_pdtest_post);
     lua_setfield(x->lua, -2, "post");
-    lua_pushcfunction(x->lua, luafunc_pdtest_register);
-    lua_setfield(x->lua, -2, "register");
-    lua_pushcfunction(x->lua, luafunc_pdtest_unregister);
-    lua_setfield(x->lua, -2, "unregister");
     
-    /* pdtest.out namespace */
+    /* _.test namespace */
     lua_newtable(x->lua);
     lua_pushcfunction(x->lua, luafunc_pdtest_out_list);
     lua_setfield(x->lua, -2, "list");
@@ -385,9 +385,9 @@ static void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "float");
     lua_pushcfunction(x->lua, luafunc_pdtest_out_bang);
     lua_setfield(x->lua, -2, "bang");
-    lua_setfield(x->lua, -2, "out");
+    lua_setfield(x->lua, -2, "test");
     
-    /* pdtest.raw namespace */
+    /* _.outlet namespace */
     lua_newtable(x->lua);
     lua_pushcfunction(x->lua, luafunc_pdtest_raw_list);
     lua_setfield(x->lua, -2, "list");
@@ -397,9 +397,19 @@ static void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "float");
     lua_pushcfunction(x->lua, luafunc_pdtest_raw_bang);
     lua_setfield(x->lua, -2, "bang");
-    lua_setfield(x->lua, -2, "raw");
+    lua_setfield(x->lua, -2, "outlet");
+    lua_setglobal(x->lua,"_");
     
-    
+    /* prepare global _pdtest namespace */
+    lua_newtable(x->lua);
+    lua_pushcfunction(x->lua, luafunc_pdtest_register);
+    lua_setfield(x->lua, -2, "register");
+    lua_pushcfunction(x->lua, luafunc_pdtest_unregister);
+    lua_setfield(x->lua, -2, "unregister");
+    lua_pushcfunction(x->lua, luafunc_pdtest_errorHandler);
+    lua_setfield(x->lua, -2, "errorHandler");
+    lua_pushlightuserdata(x->lua, x);
+    lua_setfield(x->lua, -2, "userdata");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "queue");
     lua_newtable(x->lua);
@@ -410,12 +420,7 @@ static void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "currents");
     lua_newtable(x->lua);
     lua_setfield(x->lua, -2, "reg");
-    lua_setglobal(x->lua,"pdtest");
-    
-    /* set error handler and t_pdtest instance in global namespace */
-    lua_register(x->lua,"pdtest_errorHandler",luafunc_pdtest_errorHandler);
-    lua_pushlightuserdata(x->lua, x);
-    lua_setglobal(x->lua,"pdtest_userdata");
+    lua_setglobal(x->lua,"_pdtest");
     
     /* execute lua source code embeded in C strings to initialize lua test system */
     int err;
@@ -566,8 +571,10 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
 static void pdtest_report(t_pdtest *x)
 {
     /* prepares the stack to call pdtest.report() */
-    lua_getglobal(x->lua,"pdtest_errorHandler");
-    lua_getglobal(x->lua, "pdtest_report");
+    lua_getglobal(x->lua,"_pdtest");
+    lua_getfield(x->lua, -1, "errorHandler");
+    lua_getfield(x->lua, -2, "report");
+    lua_remove(x->lua,-3);
     if (!lua_isfunction(x->lua,-1)) {
       lua_pop(x->lua,2);
       error("pdtest: no pdtest_report function!!!");
@@ -593,9 +600,10 @@ static void pdtest_report(t_pdtest *x)
 static int pdtest_is_rawmessage(t_pdtest *x)
 {
     /* prepares the stack to call pdtest.unregister() */
-    lua_getglobal(x->lua,"pdtest_errorHandler");
-    lua_getglobal(x->lua,"pdtest");
-    lua_getfield(x->lua, -1, "unregister");
+    lua_getglobal(x->lua,"_pdtest");
+    lua_getfield(x->lua, -1, "errorHandler");
+    lua_getfield(x->lua, -2, "unregister");
+    lua_remove(x->lua,-3);
     if (!lua_isfunction(x->lua,-1)) {
       lua_pop(x->lua,3);
       error("pdtest: no pdtest_unregister function!!!");
@@ -625,9 +633,10 @@ static int pdtest_is_rawmessage(t_pdtest *x)
 static void pdtest_reg_message(t_pdtest *x, int israw)
 {
     /* prepares the stack to call pdtest.register() */
-    lua_getglobal(x->lua,"pdtest_errorHandler");
-    lua_getglobal(x->lua,"pdtest");
-    lua_getfield(x->lua, -1, "register");
+    lua_getglobal(x->lua,"_pdtest");
+    lua_getfield(x->lua, -1, "errorHandler");
+    lua_getfield(x->lua, -2, "register");
+    lua_remove(x->lua,-3);
     if (!lua_isfunction(x->lua,-1)) {
         lua_pop(x->lua,3);
         error("pdtest: no pdtest_reg_message function!!!");
@@ -686,7 +695,9 @@ static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw)
 
 static int luafunc_pdtest_message(lua_State *lua, t_symbol* msgtype, int israw)
 {
-    lua_getglobal(lua, "pdtest_userdata"); /* get t_pdtest since we're in lua now */
+    lua_getglobal(lua,"_pdtest");
+    lua_getfield(lua, -1, "userdata"); /* get t_pdtest since we're in lua now */
+    lua_remove(lua,-2);
     if (lua_islightuserdata(lua,-1)) {
       t_pdtest *x = lua_touserdata(lua,-1);
       lua_pop(lua,1);           /* clean up stack of userdata */
@@ -789,7 +800,7 @@ static int luafunc_pdtest_register(lua_State *lua)
       error("pdtest: no boolean as pdtest.register() argument");
       return 0;
     }
-    lua_getglobal(lua,"pdtest");
+    lua_getglobal(lua,"_pdtest");
     lua_getfield(lua, -1, "reg");
     if (!lua_istable(lua,-1)) {
         lua_pop(lua,2);
@@ -808,7 +819,7 @@ static int luafunc_pdtest_register(lua_State *lua)
 /* lua function - unregister next message and return its bool */
 static int luafunc_pdtest_unregister(lua_State *lua)
 {
-    lua_getglobal(lua,"pdtest");
+    lua_getglobal(lua,"_pdtest");
     lua_getfield(lua, -1, "reg");
     if (!lua_istable(lua,-1)) {
       lua_pop(lua,2);
@@ -851,7 +862,7 @@ static int luafunc_pdtest_unregister(lua_State *lua)
  *************************************************/
 
 static const char* pdtest_lua_init = "\n"
-"pdtest.suite = function(suite)\n"
+"_.suite = function(suite)\n"
 "  local currentSuite = {name=suite, queue={}, dones={}}\n"
 "  \n"
 "  currentSuite.before = function() end\n"
@@ -1222,90 +1233,78 @@ static const char* pdtest_lua_init = "\n"
 "    return currentCase\n"
 "  end\n"
 "  \n"
-"  table.insert(pdtest.queue,currentSuite)\n"
+"  table.insert(_pdtest.queue,currentSuite)\n"
 "  return currentSuite\n"
 "end\n";
 
 static const char* pdtest_lua_next = "\n"
-"function pdtest_next()\n"
-"  if table.getn(pdtest.queue) == 0 then\n"
+"_pdtest.next = function()\n"
+"  if table.getn(_pdtest.queue) == 0 then\n"
 "    return false\n"
-"  elseif table.getn(pdtest.queue[1].queue) == 0 then\n"
-"    table.insert(pdtest.dones, table.remove(pdtest.queue,1))\n"
-"  elseif table.getn(pdtest.queue[1].queue[1].queue) == 0 then\n"
-"    table.insert(pdtest.queue[1].dones, table.remove(pdtest.queue[1].queue,1))\n"
+"  elseif table.getn(_pdtest.queue[1].queue) == 0 then\n"
+"    table.insert(_pdtest.dones, table.remove(_pdtest.queue,1))\n"
+"  elseif table.getn(_pdtest.queue[1].queue[1].queue) == 0 then\n"
+"    table.insert(_pdtest.queue[1].dones, table.remove(_pdtest.queue[1].queue,1))\n"
 "  else\n"
-"    local current = pdtest.queue[1].queue[1].queue[1]\n"
+"    local current = _pdtest.queue[1].queue[1].queue[1]\n"
 "    current.suite.before()\n"
 "    current.case.before()\n"
 "    if type(current.test) == \"function\" then\n"
 "      current.name = \"function\"\n"
 "      current.test()\n"
 "    elseif type(current.test) == \"table\" then\n"
-"      if type(current.test[1]) == \"table\" then\n"
-"        local ntest = {}\n"
-"        for i,v in ipairs(current.test) do\n"
-"          if type(v) == \"table\" then\n"
-"            ntest[i] = table.concat(v,\", \")\n"
-"          else\n"
-"            ntest[i] = \"nil\"\n"
-"          end\n"
-"        end\n"
-"        current.name = table.concat(ntest, \"| \")\n"
-"      else\n"
-"        current.name = table.concat(current.test, \", \")\n"
-"      end\n"
-"      pdtest.out.list(current.test)\n"
+"      current.name = table.concat(current.test, \", \")\n"
+"      _.test.list(current.test)\n"
 "    elseif type(current.test) == \"string\" then\n"
 "      current.name = current.test\n"
-"      pdtest.out.symbol(current.test)\n"
+"      _.test.symbol(current.test)\n"
 "    elseif type(current.test) == \"number\" then\n"
 "      current.name = tostring(current.test)\n"
-"      pdtest.out.float(current.test)\n"
+"      _.test.float(current.test)\n"
 "    else\n"
-"      pdtest.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
+"      _.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
 "    end\n"
 "    current.suite.after()\n"
 "    current.case.after()\n"
-"    table.insert(pdtest.currents, current)\n"
-"    table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))\n"
+"    table.insert(_pdtest.currents, current)\n"
+"    table.insert(_pdtest.queue[1].queue[1].dones, table.remove(_pdtest.queue[1].queue[1].queue,1))\n"
 "  end\n"
 "  return true\n"
 "end\n";
 
 static const char* pdtest_lua_yield = "\n"
-"function pdtest_yield()\n"
-"  if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then\n"
-"    local current = table.remove(pdtest.currents,1)\n"
-"    local result = table.remove(pdtest.results,1)\n"
+"_pdtest.yield = function()\n"
+"  if table.getn(_pdtest.currents) > 0 and table.getn(_pdtest.results) > 0 then\n"
+"    local current = table.remove(_pdtest.currents,1)\n"
+"    local result = table.remove(_pdtest.results,1)\n"
 "    current.result = result\n"
 "    current.success, current.detail = current.try(current.result)\n"
 "    local nametag = \"\"..current.suite.name..\" -> \"..current.case.name..\" >> \"..current.detail\n"
 "    if current.success then\n"
-"      pdtest.post(nametag)\n"
-"      pdtest.post(\"-> OK\")\n"
+"      _.post(nametag)\n"
+"      _.post(\"-> OK\")\n"
 "    else\n"
-"      pdtest.post(nametag)\n"
-"      pdtest.post(\"x> FAILED\")\n"
+"      _.post(nametag)\n"
+"      _.post(\"x> FAILED\")\n"
 "    end\n"
-"  elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then\n"
+"  elseif table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then\n"
 "    return false\n"
 "  end\n"
 "  return true\n"
 "end\n";
 
 static const char* pdtest_lua_report = "\n"
-"function pdtest_report()\n"
-"  if table.getn(pdtest.currents) > 0 then\n"
+"_pdtest.report = function()\n"
+"  if table.getn(_pdtest.currents) > 0 then\n"
 "    return false\n"
 "  else\n"
-"    pdtest.post(\"!!! Test Completed !!!\")\n"
+"    _.post(\"!!! Test Completed !!!\")\n"
 "    local tests = 0\n"
 "    local cases = 0\n"
 "    local suites = 0\n"
 "    local ok = 0\n"
 "    local fail = 0\n"
-"    for si, suite in ipairs(pdtest.dones) do\n"
+"    for si, suite in ipairs(_pdtest.dones) do\n"
 "      suites = suites + 1\n"
 "      for ci, case in ipairs(suite.dones) do\n"
 "        cases = cases + 1\n"
@@ -1319,9 +1318,9 @@ static const char* pdtest_lua_report = "\n"
 "        end\n"
 "      end\n"
 "    end\n"
-"    pdtest.post(\"\"..suites..\" Suites | \"..cases..\" Cases | \"..tests..\" Tests\")\n"
-"    pdtest.post(\"\"..ok..\" tests passed\")\n"
-"    pdtest.post(\"\"..fail..\" tests failed\")\n"
+"    _.post(\"\"..suites..\" Suites | \"..cases..\" Cases | \"..tests..\" Tests\")\n"
+"    _.post(\"\"..ok..\" tests passed\")\n"
+"    _.post(\"\"..fail..\" tests failed\")\n"
 "  end\n"
 "  return true\n"
 "end\n";

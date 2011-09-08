@@ -1,8 +1,8 @@
 -- from C
-pdtest = {}
+_ = {}
 
 -- pdtest_init
-pdtest.suite = function(suite)
+_.suite = function(suite)
   local currentSuite = {name=suite, queue={}, dones={}}
   
   currentSuite.before = function() end
@@ -373,19 +373,19 @@ pdtest.suite = function(suite)
     return currentCase
   end
   
-  table.insert(pdtest.queue,currentSuite)
+  table.insert(_pdtest.queue,currentSuite)
   return currentSuite
 end
 
-function pdtest_next()
-  if table.getn(pdtest.queue) == 0 then
+_pdtest.next = function()
+  if table.getn(_pdtest.queue) == 0 then
     return false
-  elseif table.getn(pdtest.queue[1].queue) == 0 then
-    table.insert(pdtest.dones, table.remove(pdtest.queue,1))
-  elseif table.getn(pdtest.queue[1].queue[1].queue) == 0 then
-    table.insert(pdtest.queue[1].dones, table.remove(pdtest.queue[1].queue,1))
+  elseif table.getn(_pdtest.queue[1].queue) == 0 then
+    table.insert(_pdtest.dones, table.remove(_pdtest.queue,1))
+  elseif table.getn(_pdtest.queue[1].queue[1].queue) == 0 then
+    table.insert(_pdtest.queue[1].dones, table.remove(_pdtest.queue[1].queue,1))
   else
-    local current = pdtest.queue[1].queue[1].queue[1]
+    local current = _pdtest.queue[1].queue[1].queue[1]
     current.suite.before()
     current.case.before()
     if type(current.test) == "function" then
@@ -393,55 +393,55 @@ function pdtest_next()
       current.test()
     elseif type(current.test) == "table" then
       current.name = table.concat(current.test, ", ")
-      pdtest.out.list(current.test)
+      _.test.list(current.test)
     elseif type(current.test) == "string" then
       current.name = current.test
-      pdtest.out.symbol(current.test)
+      _.test.symbol(current.test)
     elseif type(current.test) == "number" then
       current.name = tostring(current.test)
-      pdtest.out.float(current.test)
+      _.test.float(current.test)
     else
-      pdtest.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
+      _.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
     end
     current.suite.after()
     current.case.after()
-    table.insert(pdtest.currents, current)
-    table.insert(pdtest.queue[1].queue[1].dones, table.remove(pdtest.queue[1].queue[1].queue,1))
+    table.insert(_pdtest.currents, current)
+    table.insert(_pdtest.queue[1].queue[1].dones, table.remove(_pdtest.queue[1].queue[1].queue,1))
   end
   return true
 end
 
-function pdtest_yield()
-  if table.getn(pdtest.currents) > 0 and table.getn(pdtest.results) > 0 then
-    local current = table.remove(pdtest.currents,1)
-    local result = table.remove(pdtest.results,1)
+_pdtest.yield = function()
+  if table.getn(_pdtest.currents) > 0 and table.getn(_pdtest.results) > 0 then
+    local current = table.remove(_pdtest.currents,1)
+    local result = table.remove(_pdtest.results,1)
     current.result = result
     current.success, current.detail = current.try(current.result)
     local nametag = ""..current.suite.name.." -> "..current.case.name.." >> "..current.detail
     if current.success then
-      pdtest.post(nametag)
-      pdtest.post("-> OK")
+      _.post(nametag)
+      _.post("-> OK")
     else
-      pdtest.post(nametag)
-      pdtest.post("x> FAILED")
+      _.post(nametag)
+      _.post("x> FAILED")
     end
-  elseif table.getn(pdtest.currents) == 0 and table.getn(pdtest.results) == 0 and table.getn(pdtest.queue) == 0 then
+  elseif table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then
     return false
   end
   return true
 end
 
-function pdtest_report()
-  if table.getn(pdtest.currents) > 0 then
+_pdtest.report = function()
+  if table.getn(_pdtest.currents) > 0 then
     return false
   else
-    pdtest.post("!!! Test Completed !!!")
+    _.post("!!! Test Completed !!!")
     local tests = 0
     local cases = 0
     local suites = 0
     local ok = 0
     local fail = 0
-    for si, suite in ipairs(pdtest.dones) do
+    for si, suite in ipairs(_pdtest.dones) do
       suites = suites + 1
       for ci, case in ipairs(suite.dones) do
         cases = cases + 1
@@ -455,9 +455,9 @@ function pdtest_report()
         end
       end
     end
-    pdtest.post(""..suites.." Suites | "..cases.." Cases | "..tests.." Tests")
-    pdtest.post(""..ok.." tests passed")
-    pdtest.post(""..fail.." tests failed")
+    _.post(""..suites.." Suites | "..cases.." Cases | "..tests.." Tests")
+    _.post(""..ok.." tests passed")
+    _.post(""..fail.." tests failed")
   end
   return true
 end
