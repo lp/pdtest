@@ -212,7 +212,7 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
   /* skip result if correspondent message was raw_message */
   if (pdtest_is_rawmessage(x)) { return; }
   
-  /* gets pdtest.results table onto the stack*/
+  /* gets _pdtest.results table onto the stack*/
   lua_getglobal(x->lua, "_pdtest");
   lua_getfield(x->lua, -1, "results");
   int n = luaL_getn(x->lua,-1);
@@ -241,7 +241,7 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
     lua_pushstring(x->lua, resultstring);
   }
   
-  lua_rawseti(x->lua,-2,n+1);   /* push result message in pdtest.table */
+  lua_rawseti(x->lua,-2,n+1);   /* push result message in _pdtest.table */
   lua_pop(x->lua,2);            /* clean up the stack */
 }
 
@@ -313,7 +313,7 @@ static void pdtest_next(t_pdtest * x)
         if (lua_isboolean(x->lua,-1)) {
             int doing = lua_toboolean(x->lua,-1);
             if (!doing) { error("pdtest: no tests to run..."); }
-        } else { error("pdtest: pdtest.next() didn't return a bool??"); }
+        } else { error("pdtest: _pdtest.next() didn't return a bool??"); }
         lua_pop(x->lua,1);  /* clean stack from bool result */
     } 
 }
@@ -555,7 +555,7 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
       ok = 0;
     }
   } else {
-    error("pdtest: pdtest.message function takes a table as its only argument");
+    error("pdtest: Test.list() function takes a table as its only argument");
     ok = 0;
   }
   lua_pop(L, 1);
@@ -571,7 +571,7 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count)
 
 static void pdtest_report(t_pdtest *x)
 {
-    /* prepares the stack to call pdtest.report() */
+    /* prepares the stack to call _pdtest.report() */
     lua_getglobal(x->lua,"_pdtest");
     lua_getfield(x->lua, -1, "errorHandler");
     lua_getfield(x->lua, -2, "report");
@@ -593,14 +593,14 @@ static void pdtest_report(t_pdtest *x)
                 post("pdtest: postponing report as the queue is not empty...");
                 pdtest_start(x,gensym("report"));
             }
-        } else { error("pdtest: pdtest.report() didn't return a bool??"); }
+        } else { error("pdtest: _pdtest.report() didn't return a bool??"); }
         lua_pop(x->lua,1);  /* clean stack from bool result */
     }
 }
 
 static int pdtest_is_rawmessage(t_pdtest *x)
 {
-    /* prepares the stack to call pdtest.unregister() */
+    /* prepares the stack to call _pdtest.unregister() */
     lua_getglobal(x->lua,"_pdtest");
     lua_getfield(x->lua, -1, "errorHandler");
     lua_getfield(x->lua, -2, "unregister");
@@ -633,7 +633,7 @@ static int pdtest_is_rawmessage(t_pdtest *x)
 
 static void pdtest_reg_message(t_pdtest *x, int israw)
 {
-    /* prepares the stack to call pdtest.register() */
+    /* prepares the stack to call _pdtest.register() */
     lua_getglobal(x->lua,"_pdtest");
     lua_getfield(x->lua, -1, "errorHandler");
     lua_getfield(x->lua, -2, "register");
@@ -663,7 +663,7 @@ static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw)
     } else if (msgtype == &s_symbol) {
       if (!lua_isstring(x->lua,-1)) {
         lua_pop(x->lua,1);
-        error("pdtest: pdtest.x.symbol() must have a string as argument");
+        error("pdtest: pdtest outlet must have a string as argument");
       } 
       const char* message = lua_tostring(x->lua,-1);
       lua_pop(x->lua,1);
@@ -673,7 +673,7 @@ static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw)
     } else if (msgtype == &s_float) {
       if (!lua_isnumber(x->lua,-1)) {
         lua_pop(x->lua,1);
-        error("pdtest: pdtest.x.float() must have a string as argument");
+        error("pdtest: pdtest outlet must have a string as argument");
       } 
       double message = lua_tonumber(x->lua,-1);
       lua_pop(x->lua,1);
@@ -798,14 +798,14 @@ static int luafunc_pdtest_register(lua_State *lua)
 {
     if (!lua_isboolean(lua,-1)) {
       lua_pop(lua,-1);
-      error("pdtest: no boolean as pdtest.register() argument");
+      error("pdtest: no boolean as _pdtest.register() argument");
       return 0;
     }
     lua_getglobal(lua,"_pdtest");
     lua_getfield(lua, -1, "reg");
     if (!lua_istable(lua,-1)) {
         lua_pop(lua,2);
-        error("pdtest: no pdtest.reg table!!!");
+        error("pdtest: no _pdtest.reg table!!!");
         return 0;
     }
     lua_remove(lua,-2);   /* clean stack of pdtest table */
@@ -824,7 +824,7 @@ static int luafunc_pdtest_unregister(lua_State *lua)
     lua_getfield(lua, -1, "reg");
     if (!lua_istable(lua,-1)) {
       lua_pop(lua,2);
-      error("pdtest: no pdtest.reg table!!!");
+      error("pdtest: no _pdtest.reg table!!!");
       lua_pushnil(lua);
       return 1;
     }

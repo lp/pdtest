@@ -1,11 +1,11 @@
-mysuite = pdtest.suite("TestSuite")     -- initializing a new test suite named "TestSuite"
+mysuite = Suite("TestSuite")     -- initializing a new test suite named "TestSuite"
 
 mysuite.setup(function()                -- called before every test in the suite
-  pdtest.raw.list({"command","flushdb"})
+  _.outlet.list({"command","flushdb"})
 end)
 
 mysuite.teardown(function()             -- called after every test in the suite
-  pdtest.raw.list({"command","flushdb"})
+  _.outlet.list({"command","flushdb"})
 end)
 
 mysuite.case("Server Info"              -- new test case named "Server Info"
@@ -22,15 +22,15 @@ mysuite.case("Reality Check"            -- second test case named "Reality Check
 mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
 
 mycase.setup(                           -- called before every test in the case
-  function() pdtest.raw.list({"command","SET","FOO","BAR"})
+  function() _.outlet.list({"command","SET","FOO","BAR"})
 end)
 
 mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "BAR"
   ).should:equal("BAR")
 
 mycase.test(function()                  -- here a test function is passed instead
-  pdtest.raw.list({"command","DEL","FOO"})
-  pdtest.out.list({"command","EXISTS","FOO"})
+  _.outlet.list({"command","DEL","FOO"})
+  Test.list({"command","EXISTS","FOO"})
 end).should:equal(0)                    
 
 mycase.test(
