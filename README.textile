@@ -14,10 +14,10 @@ h3. Suites functions
 
 bc. mysuite = Suite("my test suite")
 mysuite.setup(function()                                -- set a setup function to be called
-    _.outlet.list({"SOME","SETUP","MESSAGE"})         -- before all of this suite tests
+    _.outlet.list({"SOME","SETUP","MESSAGE"})           -- before all of this suite tests
 end)
 mysuite.teardown(function()                             -- set a cleanup function to be called
-    _.outlet.list({"SOME","CLEANUP","MESSAGE"})       -- after all of this suite tests
+    _.outlet.list({"SOME","CLEANUP","MESSAGE"})         -- after all of this suite tests
 end)
 mysuite.case("my test case")                            -- define a new test case
 
@@ -25,16 +25,16 @@ h3. Cases functions
 
 bc. mycase = mysuite.case("my test case")
 mycase.setup(function()                                 -- set a setup function to be called
-    _.outlet.list({"SOME","SETUP","MESSAGE"})         -- before all of this case tests
+    _.outlet.list({"SOME","SETUP","MESSAGE"})           -- before all of this case tests
 end)
 mycase.teardown(function()                              -- set a cleanup function to be called
-    _.outlet.list({"SOME","CLEANUP","MESSAGE"})       -- after all of this case tests
+    _.outlet.list({"SOME","CLEANUP","MESSAGE"})         -- after all of this case tests
 end)
 mycase.test({"MY","TEST","MESSAGE"})                    -- lua table as pd list message to outlet
 mycase.test("MESSAGE")                                  -- lua string as pd symbol message to outlet
 mycase.test(3.1416)                                     -- lua number as pd float message to outlet
 mycase.test(function()                                  -- long test form, function body can contain only one
-    Test.list({"MY","TEST","MESSAGE"})            -- Test.<type>() call, but unlimited _.outlet.<type>().
+    Test.list({"MY","TEST","MESSAGE"})                  -- Test.<type>() call, but unlimited _.outlet.<type>().
 end)
 
 h3. Tests functions
@@ -133,7 +133,7 @@ end)
 
 h3. The Test namespace
 
-p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *pd.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *Test* call for each *suite.test()*.
+p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *case.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *Test* call for each *case.test()*.
 
 bc. Test.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as test message list through outlet
 Test.symbol("STRING")                             -- sends lua string as test message symbol through outlet
@@ -142,13 +142,13 @@ Test.bang()                                       -- sends bang as test message 
 
 h3. The _ namespace: direct pd calls
 
-bc. _.post("string to post")                           -- post to pd console
-_.error("string to signal")                        -- sends error to pd console
-_.outlet                                            -- namespace for sending untested messages to the pdtest outlet 
+bc. _.post("string to post")                          -- post to pd console
+_.error("string to signal")                       -- sends error to pd console
+_.outlet                                          -- namespace for sending untested messages to the pdtest outlet 
 
 h3. The _.outlet namespace -> untested messages
 
-p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *suite.test()* _function()_.  General rule: 1 ignored inlet message for each *_.outlet* call.
+p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *case.test()* _function()_.  General rule: 1 ignored inlet message for each *_.outlet* call.
 
 bc. _.outlet.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
 _.outlet.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
