@@ -37,8 +37,8 @@ THE SOFTWARE.
 #include "m_pd.h"
 
 #define PDTEST_MAJOR 0
-#define PDTEST_MINOR 7
-#define PDTEST_PATCH 4
+#define PDTEST_MINOR 8
+#define PDTEST_PATCH 0
 #define PD_MAJOR_VERSION 0
 #define PD_MINOR_VERSION 42
 
@@ -375,18 +375,6 @@ static void pdtest_luasetup(t_pdtest *x)
     lua_pushcfunction(x->lua, luafunc_pdtest_post);
     lua_setfield(x->lua, -2, "post");
     
-    /* _.test namespace */
-    lua_newtable(x->lua);
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_list);
-    lua_setfield(x->lua, -2, "list");
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_symbol);
-    lua_setfield(x->lua, -2, "symbol");
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_float);
-    lua_setfield(x->lua, -2, "float");
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_bang);
-    lua_setfield(x->lua, -2, "bang");
-    lua_setfield(x->lua, -2, "test");
-    
     /* _.outlet namespace */
     lua_newtable(x->lua);
     lua_pushcfunction(x->lua, luafunc_pdtest_raw_list);
@@ -399,6 +387,19 @@ static void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "bang");
     lua_setfield(x->lua, -2, "outlet");
     lua_setglobal(x->lua,"_");
+    
+    /* _.test namespace */
+    lua_newtable(x->lua);
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_list);
+    lua_setfield(x->lua, -2, "list");
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_symbol);
+    lua_setfield(x->lua, -2, "symbol");
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_float);
+    lua_setfield(x->lua, -2, "float");
+    lua_pushcfunction(x->lua, luafunc_pdtest_out_bang);
+    lua_setfield(x->lua, -2, "bang");
+    lua_setglobal(x->lua, "Test");
+    
     
     /* prepare global _pdtest namespace */
     lua_newtable(x->lua);
@@ -862,7 +863,7 @@ static int luafunc_pdtest_unregister(lua_State *lua)
  *************************************************/
 
 static const char* pdtest_lua_init = "\n"
-"_.suite = function(suite)\n"
+"Suite = function(suite)\n"
 "  local currentSuite = {name=suite, queue={}, dones={}}\n"
 "  \n"
 "  currentSuite.before = function() end\n"
@@ -1254,13 +1255,13 @@ static const char* pdtest_lua_next = "\n"
 "      current.test()\n"
 "    elseif type(current.test) == \"table\" then\n"
 "      current.name = table.concat(current.test, \", \")\n"
-"      _.test.list(current.test)\n"
+"      Test.list(current.test)\n"
 "    elseif type(current.test) == \"string\" then\n"
 "      current.name = current.test\n"
-"      _.test.symbol(current.test)\n"
+"      Test.symbol(current.test)\n"
 "    elseif type(current.test) == \"number\" then\n"
 "      current.name = tostring(current.test)\n"
-"      _.test.float(current.test)\n"
+"      Test.float(current.test)\n"
 "    else\n"
 "      _.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
 "    end\n"

@@ -10,34 +10,9 @@ h2. Test Suite Syntax:
 
 h4. Building a test suite is _easy_ when you know its basics:
 
-h3. The _ namespace
-
-bc. _      -- the pdtest namespace object
-_.suite("suite name")                              -- suite creation function
-_.post("string to post")                           -- post to pd console
-_.error("string to signal")                        -- sends error to pd console
-
-h3. The _.test namespace
-
-p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *pd.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *_.test* call for each *suite.test()*.
-
-bc. _.test.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as test message list through outlet
-_.test.symbol("STRING")                             -- sends lua string as test message symbol through outlet
-_.test.number(3.1416)                               -- sends lua number as test message float through outlet
-_.test.bang()                                       -- sends bang as test message through outlet
-
-h3. The _.outlet namespace -> untested messages
-
-p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *suite.test()* _function()_.  General rule: 1 ignored inlet message for each *_.outlet* call.
-
-bc. _.outlet.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
-_.outlet.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
-_.outlet.number(3.1416)                               -- sends lua number as raw message float through outlet
-_.outlet.bang()                                       -- sends bang as raw message through outlet
-
 h3. Suites functions
 
-bc. mysuite = _.suite("my test suite")
+bc. mysuite = Suite("my test suite")
 mysuite.setup(function()                                -- set a setup function to be called
     _.outlet.list({"SOME","SETUP","MESSAGE"})         -- before all of this suite tests
 end)
@@ -59,7 +34,7 @@ mycase.test({"MY","TEST","MESSAGE"})                    -- lua table as pd list 
 mycase.test("MESSAGE")                                  -- lua string as pd symbol message to outlet
 mycase.test(3.1416)                                     -- lua number as pd float message to outlet
 mycase.test(function()                                  -- long test form, function body can contain only one
-    _.test.list({"MY","TEST","MESSAGE"})            -- _.test.<type>() call, but unlimited _.outlet.<type>().
+    Test.list({"MY","TEST","MESSAGE"})            -- Test.<type>() call, but unlimited _.outlet.<type>().
 end)
 
 h3. Tests functions
@@ -155,13 +130,38 @@ end)
     end
 end)
 
+
+h3. The Test namespace
+
+p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *pd.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *Test* call for each *suite.test()*.
+
+bc. Test.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as test message list through outlet
+Test.symbol("STRING")                             -- sends lua string as test message symbol through outlet
+Test.number(3.1416)                               -- sends lua number as test message float through outlet
+Test.bang()                                       -- sends bang as test message through outlet
+
+h3. The _ namespace: direct pd calls
+
+bc. _.post("string to post")                           -- post to pd console
+_.error("string to signal")                        -- sends error to pd console
+_.outlet                                            -- namespace for sending untested messages to the pdtest outlet 
+
+h3. The _.outlet namespace -> untested messages
+
+p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *suite.test()* _function()_.  General rule: 1 ignored inlet message for each *_.outlet* call.
+
+bc. _.outlet.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
+_.outlet.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
+_.outlet.number(3.1416)                               -- sends lua number as raw message float through outlet
+_.outlet.bang()                                       -- sends bang as raw message through outlet
+
 h2. Example Tests Suite
 
 !https://github.com/lp/pdtest/raw/master/img/pdtest_example.png!
 
 h5. examplesuite.lua
 
-bc. mysuite = _.suite("TestSuite") -- initializing a new test suite named "TestSuite"
+bc. mysuite = Suite("TestSuite") -- initializing a new test suite named "TestSuite"
 
 bc. mysuite.setup(function()                -- called before every test in the suite
   _.outlet.list({"command","flushdb"})
@@ -193,7 +193,7 @@ bc. mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "
 
 bc. mycase.test(function()                  -- here a test function is passed instead
         _.outlet.list({"command","DEL","FOO"})
-        _.test.list({"command","EXISTS","FOO"})
+        Test.list({"command","EXISTS","FOO"})
     end).should:equal(0)
 
 bc. mycase.test(

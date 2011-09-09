@@ -1,4 +1,4 @@
-local suite = _.suite("Auto Test")
+local suite = Suite("Auto Test")
 
 suite.case("test lists"
   ).test({"A","B","C"}
@@ -9,7 +9,7 @@ suite.case("not test lists"
     
 suite.case("out lists"
   ).test(function()
-    _.test.list({"A","B","C"})
+    Test.list({"A","B","C"})
   end).should:equal({"A","B","C"})
 
 suite.case("test symbol"
@@ -18,7 +18,7 @@ suite.case("test symbol"
     
 suite.case("out symbol"
   ).test(function()
-    _.test.symbol("OK")
+    Test.symbol("OK")
   end).should:equal("OK")
 
 suite.case("test float"
@@ -27,7 +27,7 @@ suite.case("test float"
 
 suite.case("out float"
   ).test(function()
-    _.test.float(1.0)
+    Test.float(1.0)
   end).should:equal(1.0)
 
 suite.case("test bang"
@@ -36,7 +36,7 @@ suite.case("test bang"
 
 suite.case("out bang"
   ).test(function()
-    _.test.bang()
+    Test.bang()
   end).should:equal("bang")
 
 suite.case("be more as numbers"

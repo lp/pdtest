@@ -2,7 +2,7 @@
 _ = {}
 
 -- pdtest_init
-_.suite = function(suite)
+Suite = function(suite)
   local currentSuite = {name=suite, queue={}, dones={}}
   
   currentSuite.before = function() end
@@ -393,13 +393,13 @@ _pdtest.next = function()
       current.test()
     elseif type(current.test) == "table" then
       current.name = table.concat(current.test, ", ")
-      _.test.list(current.test)
+      Test.list(current.test)
     elseif type(current.test) == "string" then
       current.name = current.test
-      _.test.symbol(current.test)
+      Test.symbol(current.test)
     elseif type(current.test) == "number" then
       current.name = tostring(current.test)
-      _.test.float(current.test)
+      Test.float(current.test)
     else
       _.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
     end
