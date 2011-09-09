@@ -150,10 +150,10 @@ h3. The _.outlet namespace -> untested messages
 
 p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *case.test()* _function()_.  General rule: 1 ignored inlet message for each *_.outlet* call.
 
-bc. _.outlet.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
-_.outlet.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
-_.outlet.number(3.1416)                               -- sends lua number as raw message float through outlet
-_.outlet.bang()                                       -- sends bang as raw message through outlet
+bc. _.outlet.list({"YOUR","MESSAGE","LIST"})          -- sends lua table as raw message list through outlet
+_.outlet.symbol("STRING")                         -- sends lua string as raw message symbol through outlet
+_.outlet.number(3.1416)                           -- sends lua number as raw message float through outlet
+_.outlet.bang()                                   -- sends bang as raw message through outlet
 
 h2. Example Tests Suite
 
@@ -192,9 +192,9 @@ bc. mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "
   ).should:equal("BAR")
 
 bc. mycase.test(function()                  -- here a test function is passed instead
-        _.outlet.list({"command","DEL","FOO"})
-        Test.list({"command","EXISTS","FOO"})
-    end).should:equal(0)
+  _.outlet.list({"command","DEL","FOO"})
+  Test.list({"command","EXISTS","FOO"})
+end).should:equal(0)
 
 bc. mycase.test(
   {"command","SETNX","FOO","BAT"}
