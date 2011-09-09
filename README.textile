@@ -10,39 +10,39 @@ h2. Test Suite Syntax:
 
 h4. Building a test suite is _easy_ when you know its basics:
 
-h3. The pdtest namespace
+h3. The _ namespace
 
-bc. pdtest      -- the pdtest namespace object
-pdtest.suite("suite name")                              -- suite creation function
-pdtest.post("string to post")                           -- post to pd console
-pdtest.error("string to signal")                        -- sends error to pd console
+bc. _      -- the pdtest namespace object
+_.suite("suite name")                              -- suite creation function
+_.post("string to post")                           -- post to pd console
+_.error("string to signal")                        -- sends error to pd console
 
-h3. The pdtest.out namespace
+h3. The _.test namespace
 
-p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *pd.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *pdtest.out* call for each *pdtest.test()*.
+p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *pd.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *_.test* call for each *suite.test()*.
 
-bc. pdtest.out.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as test message list through outlet
-pdtest.out.symbol("STRING")                             -- sends lua string as test message symbol through outlet
-pdtest.out.number(3.1416)                               -- sends lua number as test message float through outlet
-pdtest.out.bang()                                       -- sends bang as test message through outlet
+bc. _.test.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as test message list through outlet
+_.test.symbol("STRING")                             -- sends lua string as test message symbol through outlet
+_.test.number(3.1416)                               -- sends lua number as test message float through outlet
+_.test.bang()                                       -- sends bang as test message through outlet
 
-h3. The pdtest.raw namespace -> untested messages
+h3. The _.outlet namespace -> untested messages
 
-p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *pdtest.test()* _function()_.  General rule: 1 ignored inlet message for each *pdtest.raw* call.
+p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *suite.test()* _function()_.  General rule: 1 ignored inlet message for each *_.outlet* call.
 
-bc. pdtest.raw.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
-pdtest.raw.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
-pdtest.raw.number(3.1416)                               -- sends lua number as raw message float through outlet
-pdtest.raw.bang()                                       -- sends bang as raw message through outlet
+bc. _.outlet.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as raw message list through outlet
+_.outlet.symbol("STRING")                             -- sends lua string as raw message symbol through outlet
+_.outlet.number(3.1416)                               -- sends lua number as raw message float through outlet
+_.outlet.bang()                                       -- sends bang as raw message through outlet
 
 h3. Suites functions
 
-bc. mysuite = pdtest.suite("my test suite")
+bc. mysuite = _.suite("my test suite")
 mysuite.setup(function()                                -- set a setup function to be called
-    pdtest.raw.list({"SOME","SETUP","MESSAGE"})         -- before all of this suite tests
+    _.outlet.list({"SOME","SETUP","MESSAGE"})         -- before all of this suite tests
 end)
 mysuite.teardown(function()                             -- set a cleanup function to be called
-    pdtest.raw.list({"SOME","CLEANUP","MESSAGE"})       -- after all of this suite tests
+    _.outlet.list({"SOME","CLEANUP","MESSAGE"})       -- after all of this suite tests
 end)
 mysuite.case("my test case")                            -- define a new test case
 
@@ -50,16 +50,16 @@ h3. Cases functions
 
 bc. mycase = mysuite.case("my test case")
 mycase.setup(function()                                 -- set a setup function to be called
-    pdtest.raw.list({"SOME","SETUP","MESSAGE"})         -- before all of this case tests
+    _.outlet.list({"SOME","SETUP","MESSAGE"})         -- before all of this case tests
 end)
 mycase.teardown(function()                              -- set a cleanup function to be called
-    pdtest.raw.list({"SOME","CLEANUP","MESSAGE"})       -- after all of this case tests
+    _.outlet.list({"SOME","CLEANUP","MESSAGE"})       -- after all of this case tests
 end)
 mycase.test({"MY","TEST","MESSAGE"})                    -- lua table as pd list message to outlet
 mycase.test("MESSAGE")                                  -- lua string as pd symbol message to outlet
 mycase.test(3.1416)                                     -- lua number as pd float message to outlet
 mycase.test(function()                                  -- long test form, function body can contain only one
-    pdtest.out.list({"MY","TEST","MESSAGE"})            -- pdtest.out.<type>() call, but unlimited pdtest.raw.<type>().
+    _.test.list({"MY","TEST","MESSAGE"})            -- _.test.<type>() call, but unlimited _.outlet.<type>().
 end)
 
 h3. Tests functions
@@ -161,14 +161,14 @@ h2. Example Tests Suite
 
 h5. examplesuite.lua
 
-bc. mysuite = pdtest.suite("TestSuite") -- initializing a new test suite named "TestSuite"
+bc. mysuite = _.suite("TestSuite") -- initializing a new test suite named "TestSuite"
 
 bc. mysuite.setup(function()                -- called before every test in the suite
-  pdtest.raw.list({"command","flushdb"})
+  _.outlet.list({"command","flushdb"})
 end)
 
 bc. mysuite.teardown(function()             -- called after every test in the suite
-  pdtest.raw.list({"command","flushdb"})
+  _.outlet.list({"command","flushdb"})
 end)
 
 bc. mysuite.case("Server Info"              -- new test case named "Server Info"
@@ -185,15 +185,15 @@ bc. mysuite.case("Reality Check"            -- second test case named "Reality C
 bc. mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
 
 bc. mycase.setup(                           -- called before every test in the case
-  function() pdtest.raw.list({"command","SET","FOO","BAR"})
+  function() _.outlet.list({"command","SET","FOO","BAR"})
 end)
 
 bc. mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "BAR"
   ).should:equal("BAR")
 
 bc. mycase.test(function()                  -- here a test function is passed instead
-        pdtest.raw.list({"command","DEL","FOO"})
-        pdtest.out.list({"command","EXISTS","FOO"})
+        _.outlet.list({"command","DEL","FOO"})
+        _.test.list({"command","EXISTS","FOO"})
     end).should:equal(0)
 
 bc. mycase.test(
