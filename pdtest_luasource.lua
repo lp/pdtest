@@ -390,16 +390,16 @@ _pdtest.next = function()
     current.case.before()
     if type(current.test) == "function" then
       current.name = "function"
-      current.test()
+      current.test(_pdtest.test)
     elseif type(current.test) == "table" then
       current.name = table.concat(current.test, ", ")
-      Test.list(current.test)
+      _pdtest.test(current.test)
     elseif type(current.test) == "string" then
       current.name = current.test
-      Test.symbol(current.test)
+      _pdtest.test(current.test)
     elseif type(current.test) == "number" then
       current.name = tostring(current.test)
-      Test.float(current.test)
+      _pdtest.test(current.test)
     else
       _.error("wrong test data type -- "..type(current.test).." -- should have been function or table")
     end

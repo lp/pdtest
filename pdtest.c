@@ -38,7 +38,7 @@ THE SOFTWARE.
 
 #define PDTEST_MAJOR 0
 #define PDTEST_MINOR 8
-#define PDTEST_PATCH 0
+#define PDTEST_PATCH 2
 #define PD_MAJOR_VERSION 0
 #define PD_MINOR_VERSION 42
 
@@ -81,18 +81,11 @@ static t_atom *pdtest_lua_popatomtable(lua_State *L, int *count);
 static void pdtest_report(t_pdtest *x);
 static int pdtest_is_rawmessage(t_pdtest *x);
 static void pdtest_reg_message(t_pdtest *x, int israw);
-static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw);
+static void pdtest_message(t_pdtest *x, int israw);
 
 /* Lua functions */
-static int luafunc_pdtest_message(lua_State *lua, t_symbol* msgtype, int israw);
-static int luafunc_pdtest_out_list(lua_State *lua);
-static int luafunc_pdtest_out_symbol(lua_State *lua);
-static int luafunc_pdtest_out_float(lua_State *lua);
-static int luafunc_pdtest_out_bang(lua_State *lua);
-static int luafunc_pdtest_raw_list(lua_State *lua);
-static int luafunc_pdtest_raw_symbol(lua_State *lua);
-static int luafunc_pdtest_raw_float(lua_State *lua);
-static int luafunc_pdtest_raw_bang(lua_State *lua);
+static int luafunc_pdtest_test(lua_State *lua);
+static int luafunc_pdtest_outlet(lua_State *lua);
 
 static int luafunc_pdtest_error(lua_State *lua);
 static int luafunc_pdtest_post(lua_State *lua);
@@ -374,35 +367,14 @@ static void pdtest_luasetup(t_pdtest *x)
     lua_setfield(x->lua, -2, "error");
     lua_pushcfunction(x->lua, luafunc_pdtest_post);
     lua_setfield(x->lua, -2, "post");
-    
-    /* _.outlet namespace */
-    lua_newtable(x->lua);
-    lua_pushcfunction(x->lua, luafunc_pdtest_raw_list);
-    lua_setfield(x->lua, -2, "list");
-    lua_pushcfunction(x->lua, luafunc_pdtest_raw_symbol);
-    lua_setfield(x->lua, -2, "symbol");
-    lua_pushcfunction(x->lua, luafunc_pdtest_raw_float);
-    lua_setfield(x->lua, -2, "float");
-    lua_pushcfunction(x->lua, luafunc_pdtest_raw_bang);
-    lua_setfield(x->lua, -2, "bang");
+    lua_pushcfunction(x->lua, luafunc_pdtest_outlet);
     lua_setfield(x->lua, -2, "outlet");
     lua_setglobal(x->lua,"_");
     
-    /* _.test namespace */
-    lua_newtable(x->lua);
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_list);
-    lua_setfield(x->lua, -2, "list");
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_symbol);
-    lua_setfield(x->lua, -2, "symbol");
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_float);
-    lua_setfield(x->lua, -2, "float");
-    lua_pushcfunction(x->lua, luafunc_pdtest_out_bang);
-    lua_setfield(x->lua, -2, "bang");
-    lua_setglobal(x->lua, "Test");
-    
-    
     /* prepare global _pdtest namespace */
     lua_newtable(x->lua);
+    lua_pushcfunction(x->lua, luafunc_pdtest_test);
+    lua_setfield(x->lua, -2, "test");
     lua_pushcfunction(x->lua, luafunc_pdtest_register);
     lua_setfield(x->lua, -2, "register");
     lua_pushcfunction(x->lua, luafunc_pdtest_unregister);
@@ -652,38 +624,30 @@ static void pdtest_reg_message(t_pdtest *x, int israw)
       lua_remove(x->lua,-1);
 }
 
-static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw)
+static void pdtest_message(t_pdtest *x, int israw)
 {
-    if (msgtype == &s_list) {
+    if (lua_istable(x->lua,-1)) {
       int count = 0;
       t_atom *message = pdtest_lua_popatomtable(x->lua,&count);
       pdtest_reg_message(x,israw);  /* register message as test mesage */
       outlet_list(x->x_obj.ob_outlet, &s_list, count, &message[0]);   /* sends list message to outlet */
       
-    } else if (msgtype == &s_symbol) {
-      if (!lua_isstring(x->lua,-1)) {
-        lua_pop(x->lua,1);
-        error("pdtest: pdtest outlet must have a string as argument");
-      } 
-      const char* message = lua_tostring(x->lua,-1);
-      lua_pop(x->lua,1);
-      pdtest_reg_message(x,israw);  /* register message as test mesage */
-      outlet_symbol(x->x_obj.ob_outlet, gensym(message)); /* sends symbol message to outlet */
-      
-    } else if (msgtype == &s_float) {
-      if (!lua_isnumber(x->lua,-1)) {
-        lua_pop(x->lua,1);
-        error("pdtest: pdtest outlet must have a string as argument");
-      } 
+    } else if (lua_isnumber(x->lua,-1)) {
       double message = lua_tonumber(x->lua,-1);
       lua_pop(x->lua,1);
       pdtest_reg_message(x,israw);  /* register message as test mesage */
       outlet_float(x->x_obj.ob_outlet, (t_float)message); /* sends float message to outlet */
-      
-    } else if (msgtype == &s_bang) {
+    } else if (lua_isstring(x->lua,-1)) {
+      const char* message = lua_tostring(x->lua,-1);
+      lua_pop(x->lua,1);
       pdtest_reg_message(x,israw);  /* register message as test mesage */
-      outlet_bang(x->x_obj.ob_outlet); /* sends bang message to outlet */
       
+      const char* bang = "bang";
+      if (strcmp(message,bang) == 0) {
+        outlet_bang(x->x_obj.ob_outlet); /* sends bang message to outlet */
+      } else {
+        outlet_symbol(x->x_obj.ob_outlet, gensym(message)); /* sends symbol message to outlet */
+      }
     } else {
       error("pdtest: pdtest_message function needs a valid msgtype");
     }
@@ -694,61 +658,36 @@ static void pdtest_message(t_pdtest *x, t_symbol* msgtype, int israw)
  *                                               *
  *************************************************/
 
-static int luafunc_pdtest_message(lua_State *lua, t_symbol* msgtype, int israw)
+static int luafunc_pdtest_test(lua_State *lua)
 {
-    lua_getglobal(lua,"_pdtest");
-    lua_getfield(lua, -1, "userdata"); /* get t_pdtest since we're in lua now */
-    lua_remove(lua,-2);
-    if (lua_islightuserdata(lua,-1)) {
-      t_pdtest *x = lua_touserdata(lua,-1);
-      lua_pop(lua,1);           /* clean up stack of userdata */
-      pdtest_message(x, msgtype, israw);
-    } else {
-      lua_pop(lua,1); /* cleaning stack of unknown object */
-      error("pdtest: userdata missing from Lua stack");
-    }
-    return 0;
+  lua_getglobal(lua,"_pdtest");
+  lua_getfield(lua, -1, "userdata"); /* get t_pdtest since we're in lua now */
+  lua_remove(lua,-2);
+  if (lua_islightuserdata(lua,-1)) {
+    t_pdtest *x = lua_touserdata(lua,-1);
+    lua_pop(lua,1);           /* clean up stack of userdata */
+    pdtest_message(x, 0);
+  } else {
+    lua_pop(lua,1); /* cleaning stack of unknown object */
+    error("pdtest: userdata missing from Lua stack");
+  }
+  return 0;
 }
 
-
-static int luafunc_pdtest_out_list(lua_State *lua)
+static int luafunc_pdtest_outlet(lua_State *lua)
 {
-  return luafunc_pdtest_message(lua, &s_list, 0);
-}
-
-static int luafunc_pdtest_out_symbol(lua_State *lua)
-{
-  return luafunc_pdtest_message(lua, &s_symbol, 0);
-}
-
-static int luafunc_pdtest_out_float(lua_State *lua)
-{
-  return luafunc_pdtest_message(lua, &s_float, 0);
-}
-
-static int luafunc_pdtest_out_bang(lua_State *lua)
-{
-  return luafunc_pdtest_message(lua, &s_bang, 0);
-}
-
-static int luafunc_pdtest_raw_list(lua_State *lua)
-{
-  return luafunc_pdtest_message(lua, &s_list, 1);
-}
-
-static int luafunc_pdtest_raw_symbol(lua_State *lua)
-{
-  return luafunc_pdtest_message(lua, &s_symbol, 1);
-}
-
-static int luafunc_pdtest_raw_float(lua_State *lua)
-{
-  return luafunc_pdtest_message(lua, &s_float, 1);
-}
-
-static int luafunc_pdtest_raw_bang(lua_State *lua)
-{
-  return luafunc_pdtest_message(lua, &s_bang, 1);
+  lua_getglobal(lua,"_pdtest");
+  lua_getfield(lua, -1, "userdata"); /* get t_pdtest since we're in lua now */
+  lua_remove(lua,-2);
+  if (lua_islightuserdata(lua,-1)) {
+    t_pdtest *x = lua_touserdata(lua,-1);
+    lua_pop(lua,1);           /* clean up stack of userdata */
+    pdtest_message(x, 1);
+  } else {
+    lua_pop(lua,1); /* cleaning stack of unknown object */
+    error("pdtest: userdata missing from Lua stack");
+  }
+  return 0;
 }
 
 /* lua function - sends lua string as error to pd console */
@@ -1252,16 +1191,16 @@ static const char* pdtest_lua_next = "\n"
 "    current.case.before()\n"
 "    if type(current.test) == \"function\" then\n"
 "      current.name = \"function\"\n"
-"      current.test()\n"
+"      current.test(_pdtest.test)\n"
 "    elseif type(current.test) == \"table\" then\n"
 "      current.name = table.concat(current.test, \", \")\n"
-"      Test.list(current.test)\n"
+"      _pdtest.test(current.test)\n"
 "    elseif type(current.test) == \"string\" then\n"
 "      current.name = current.test\n"
-"      Test.symbol(current.test)\n"
+"      _pdtest.test(current.test)\n"
 "    elseif type(current.test) == \"number\" then\n"
 "      current.name = tostring(current.test)\n"
-"      Test.float(current.test)\n"
+"      _pdtest.test(current.test)\n"
 "    else\n"
 "      _.error(\"wrong test data type -- \"..type(current.test)..\" -- should have been function or table\")\n"
 "    end\n"

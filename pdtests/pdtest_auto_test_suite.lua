@@ -8,8 +8,8 @@ suite.case("not test lists"
     ).should.nt:equal({"B","B","C"})
     
 suite.case("out lists"
-  ).test(function()
-    Test.list({"A","B","C"})
+  ).test(function(test)
+    test({"A","B","C"})
   end).should:equal({"A","B","C"})
 
 suite.case("test symbol"
@@ -17,8 +17,8 @@ suite.case("test symbol"
     ).should:equal("OK")
     
 suite.case("out symbol"
-  ).test(function()
-    Test.symbol("OK")
+  ).test(function(test)
+    test("OK")
   end).should:equal("OK")
 
 suite.case("test float"
@@ -26,8 +26,8 @@ suite.case("test float"
     ).should:equal(1.0)
 
 suite.case("out float"
-  ).test(function()
-    Test.float(1.0)
+  ).test(function(test)
+    test(1.0)
   end).should:equal(1.0)
 
 suite.case("test bang"
@@ -35,8 +35,8 @@ suite.case("test bang"
     ).should:equal("bang")
 
 suite.case("out bang"
-  ).test(function()
-    Test.bang()
+  ).test(function(test)
+    test("bang")
   end).should:equal("bang")
 
 suite.case("be more as numbers"
