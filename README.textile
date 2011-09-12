@@ -133,7 +133,7 @@ end)
 
 h3. The test namespace
 
-p. A test function is available inside _be_true_ functions for sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *case.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *test* call for each *case.test()*.
+p. A test function is made available as only argument inside the test function for sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *case.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *test* call for each *case.test()*.
 
 bc. test({"YOUR","MESSAGE","LIST"})               -- sends lua table as test message list through outlet
 test("STRING")                                    -- sends lua string as test message symbol through outlet
