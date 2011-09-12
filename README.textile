@@ -14,10 +14,10 @@ h3. Suites functions
 
 bc. mysuite = Suite("my test suite")
 mysuite.setup(function()                                -- set a setup function to be called
-    _.outlet.list({"SOME","SETUP","MESSAGE"})           -- before all of this suite tests
+    _.outlet({"SOME","SETUP","MESSAGE"})                -- before all of this suite tests
 end)
 mysuite.teardown(function()                             -- set a cleanup function to be called
-    _.outlet.list({"SOME","CLEANUP","MESSAGE"})         -- after all of this suite tests
+    _.outlet({"SOME","CLEANUP","MESSAGE"})              -- after all of this suite tests
 end)
 mysuite.case("my test case")                            -- define a new test case
 
@@ -25,16 +25,16 @@ h3. Cases functions
 
 bc. mycase = mysuite.case("my test case")
 mycase.setup(function()                                 -- set a setup function to be called
-    _.outlet.list({"SOME","SETUP","MESSAGE"})           -- before all of this case tests
+    _.outlet({"SOME","SETUP","MESSAGE"})                -- before all of this case tests
 end)
 mycase.teardown(function()                              -- set a cleanup function to be called
-    _.outlet.list({"SOME","CLEANUP","MESSAGE"})         -- after all of this case tests
+    _.outlet({"SOME","CLEANUP","MESSAGE"})              -- after all of this case tests
 end)
 mycase.test({"MY","TEST","MESSAGE"})                    -- lua table as pd list message to outlet
 mycase.test("MESSAGE")                                  -- lua string as pd symbol message to outlet
 mycase.test(3.1416)                                     -- lua number as pd float message to outlet
-mycase.test(function()                                  -- long test form, function body can contain only one
-    Test.list({"MY","TEST","MESSAGE"})                  -- Test.<type>() call, but unlimited _.outlet.<type>().
+mycase.test(function(test)                              -- long test form, function body can contain only one
+    test({"MY","TEST","MESSAGE"})                       -- test() call, but unlimited _.outlet().
 end)
 
 h3. Tests functions
@@ -131,14 +131,14 @@ end)
 end)
 
 
-h3. The Test namespace
+h3. The test namespace
 
-p. Sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *case.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *Test* call for each *case.test()*.
+p. A test function is available inside _be_true_ functions for sending test messages through the pdtest outlet.  Specifically used inside a _function()_ passed to the *case.test()* function.  These messages are _registered_ as test messages, pdtest will expect a test result for each of these test messages.  General rule: 1 *test* call for each *case.test()*.
 
-bc. Test.list({"YOUR","MESSAGE","LIST"})              -- sends lua table as test message list through outlet
-Test.symbol("STRING")                             -- sends lua string as test message symbol through outlet
-Test.number(3.1416)                               -- sends lua number as test message float through outlet
-Test.bang()                                       -- sends bang as test message through outlet
+bc. test({"YOUR","MESSAGE","LIST"})               -- sends lua table as test message list through outlet
+test("STRING")                                    -- sends lua string as test message symbol through outlet
+test(3.1416)                                      -- sends lua number as test message float through outlet
+test("BANG")                                      -- sends bang as test message through outlet
 
 h3. The _ namespace: direct pd calls
 
@@ -150,10 +150,10 @@ h3. The _.outlet namespace -> untested messages
 
 p. Sending raw messages through the pdtest outlet.  These _unregistered_ messages go unnoticed through the test system. Meant to be used inside *setup()/teardown()* or as test helpers inside *case.test()* _function()_.  General rule: 1 ignored inlet message for each *_.outlet* call.
 
-bc. _.outlet.list({"YOUR","MESSAGE","LIST"})          -- sends lua table as raw message list through outlet
-_.outlet.symbol("STRING")                         -- sends lua string as raw message symbol through outlet
-_.outlet.number(3.1416)                           -- sends lua number as raw message float through outlet
-_.outlet.bang()                                   -- sends bang as raw message through outlet
+bc. _.outlet({"YOUR","MESSAGE","LIST"})             -- sends lua table as raw message list through outlet
+_.outlet("STRING")                                -- sends lua string as raw message symbol through outlet
+_.outlet(3.1416)                                  -- sends lua number as raw message float through outlet
+_.outlet("BANG")                                  -- sends bang as raw message through outlet
 
 h2. Example Tests Suite
 
@@ -164,11 +164,11 @@ h5. examplesuite.lua
 bc. mysuite = Suite("TestSuite") -- initializing a new test suite named "TestSuite"
 
 bc. mysuite.setup(function()                -- called before every test in the suite
-  _.outlet.list({"command","flushdb"})
+  _.outlet({"command","flushdb"})
 end)
 
 bc. mysuite.teardown(function()             -- called after every test in the suite
-  _.outlet.list({"command","flushdb"})
+  _.outlet({"command","flushdb"})
 end)
 
 bc. mysuite.case("Server Info"              -- new test case named "Server Info"
@@ -185,15 +185,15 @@ bc. mysuite.case("Reality Check"            -- second test case named "Reality C
 bc. mycase = mysuite.case("Basic tests")    -- new test case named "Basic tests"
 
 bc. mycase.setup(                           -- called before every test in the case
-  function() _.outlet.list({"command","SET","FOO","BAR"})
+  function() _.outlet({"command","SET","FOO","BAR"})
 end)
 
 bc. mycase.test({"command", "GET", "FOO"}   -- test will pass if result equals "BAR"
   ).should:equal("BAR")
 
-bc. mycase.test(function()                  -- here a test function is passed instead
-  _.outlet.list({"command","DEL","FOO"})
-  Test.list({"command","EXISTS","FOO"})
+bc. mycase.test(function(test)              -- here a test function is passed instead
+  _.outlet({"command","DEL","FOO"})         -- notice its only argument being a test function
+  test({"command","EXISTS","FOO"})
 end).should:equal(0)
 
 bc. mycase.test(
