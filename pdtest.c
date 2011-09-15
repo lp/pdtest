@@ -38,7 +38,7 @@ THE SOFTWARE.
 
 #define PDTEST_MAJOR 0
 #define PDTEST_MINOR 8
-#define PDTEST_PATCH 4
+#define PDTEST_PATCH 6
 #define PD_MAJOR_VERSION 0
 #define PD_MINOR_VERSION 42
 
@@ -236,6 +236,7 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv)
   
   lua_rawseti(x->lua,-2,n+1);   /* push result message in _pdtest.table */
   lua_pop(x->lua,2);            /* clean up the stack */
+  pdtest_start(x,gensym("result"));
 }
 
 void pdtest_start(t_pdtest *x, t_symbol *s)
@@ -305,7 +306,9 @@ static void pdtest_next(t_pdtest * x)
     if (!err) {   
         if (lua_isboolean(x->lua,-1)) {
             int doing = lua_toboolean(x->lua,-1);
-            if (!doing) { error("pdtest: no tests to run..."); }
+            if (!doing) {
+              pdtest_stop(x, gensym("next"));
+            }
         } else { error("pdtest: _pdtest.next() didn't return a bool??"); }
         lua_pop(x->lua,1);  /* clean stack from bool result */
     } 
@@ -562,7 +565,6 @@ static void pdtest_report(t_pdtest *x)
         if (lua_isboolean(x->lua,-1)) {
             int done = lua_toboolean(x->lua,-1);
             if (!done) {
-                post("pdtest: postponing report as the queue is not empty...");
                 pdtest_start(x,gensym("report"));
             }
         } else { error("pdtest: _pdtest.report() didn't return a bool??"); }
@@ -1227,7 +1229,9 @@ static const char* pdtest_lua_yield = "\n"
 "      _.post(nametag)\n"
 "      _.post(\"x> FAILED\")\n"
 "    end\n"
-"  elseif table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then\n"
+"  end\n"
+"  \n"
+"  if table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then\n"
 "    return false\n"
 "  end\n"
 "  return true\n"

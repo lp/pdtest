@@ -425,7 +425,9 @@ _pdtest.yield = function()
       _.post(nametag)
       _.post("x> FAILED")
     end
-  elseif table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then
+  end
+  
+  if table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then
     return false
   end
   return true
