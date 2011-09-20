@@ -38,7 +38,7 @@ THE SOFTWARE.
 
 #define PDTEST_MAJOR 0
 #define PDTEST_MINOR 8
-#define PDTEST_PATCH 6
+#define PDTEST_PATCH 8
 #define PD_MAJOR_VERSION 0
 #define PD_MINOR_VERSION 42
 
@@ -66,6 +66,7 @@ void pdtest_result(t_pdtest *x, t_symbol *s, int argc, t_atom *argv);
 void pdtest_start(t_pdtest *x, t_symbol *s);
 void pdtest_stop(t_pdtest *x, t_symbol *s);
 void pdtest_reset(t_pdtest *x, t_symbol *s);
+static int pdtest_continue(t_pdtest *x);
 
 /* pdtest scheduler method */
 static void pdtest_run(t_pdtest *x);
@@ -297,21 +298,10 @@ static void pdtest_next(t_pdtest * x)
       error("pdtest: no pdtest_next function!!!");
       return;
     }
-    int err = lua_pcall(x->lua, 0, 1, 0);
+    lua_pcall(x->lua, 0, 1, 0);
     
     if (lua_isfunction(x->lua,-2))    /* clean error handler from stack */
       lua_remove(x->lua,-2);
-    
-    /* if no pcall error, check if still has job and signal error if not */
-    if (!err) {   
-        if (lua_isboolean(x->lua,-1)) {
-            int doing = lua_toboolean(x->lua,-1);
-            if (!doing) {
-              pdtest_stop(x, gensym("next"));
-            }
-        } else { error("pdtest: _pdtest.next() didn't return a bool??"); }
-        lua_pop(x->lua,1);  /* clean stack from bool result */
-    } 
 }
 
 static void pdtest_yield(t_pdtest * x)
@@ -334,9 +324,8 @@ static void pdtest_yield(t_pdtest * x)
     /* if no pcall error, check if still has results and stops if not */
     if (!err) {
         if (lua_isboolean(x->lua,-1)) {
-            int again = lua_toboolean(x->lua,-1);
-            if (!again) {
-                pdtest_stop(x, gensym("yield"));
+            int report = lua_toboolean(x->lua,-1);
+            if (report) {
                 pdtest_report(x);
             }
         } else { error("pdtest: _pdtest.yield() didn't return a bool??"); }
@@ -346,11 +335,34 @@ static void pdtest_yield(t_pdtest * x)
 
 static void pdtest_schedule(t_pdtest *x)
 {
-    if (x->async_run) {
+    if (x->async_run && pdtest_continue(x)) {
         clock_delay(x->async_clock, 0);
     } else {
+        x->async_run = 0;
         clock_unset(x->async_clock);
     }
+}
+
+static int pdtest_continue(t_pdtest *x)
+{
+  lua_getglobal(x->lua,"_pdtest");
+  
+  lua_getfield(x->lua, -1, "queue");
+  int queue_n = luaL_getn(x->lua,-1);
+  
+  lua_getfield(x->lua, -2, "results");
+  int results_n = luaL_getn(x->lua,-1);
+  
+  lua_getfield(x->lua, -3, "currents");
+  int currents_n = luaL_getn(x->lua,-1);
+  
+  lua_pop(x->lua,4);
+  if ((queue_n > 0) ||
+    ((results_n > 0) && (currents_n > 0))) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 /*************************************************
@@ -1181,9 +1193,7 @@ static const char* pdtest_lua_init = "\n"
 
 static const char* pdtest_lua_next = "\n"
 "_pdtest.next = function()\n"
-"  if table.getn(_pdtest.queue) == 0 then\n"
-"    return false\n"
-"  elseif table.getn(_pdtest.queue[1].queue) == 0 then\n"
+"  if table.getn(_pdtest.queue[1].queue) == 0 then\n"
 "    table.insert(_pdtest.dones, table.remove(_pdtest.queue,1))\n"
 "  elseif table.getn(_pdtest.queue[1].queue[1].queue) == 0 then\n"
 "    table.insert(_pdtest.queue[1].dones, table.remove(_pdtest.queue[1].queue,1))\n"
@@ -1211,7 +1221,6 @@ static const char* pdtest_lua_next = "\n"
 "    table.insert(_pdtest.currents, current)\n"
 "    table.insert(_pdtest.queue[1].queue[1].dones, table.remove(_pdtest.queue[1].queue[1].queue,1))\n"
 "  end\n"
-"  return true\n"
 "end\n";
 
 static const char* pdtest_lua_yield = "\n"
@@ -1232,9 +1241,9 @@ static const char* pdtest_lua_yield = "\n"
 "  end\n"
 "  \n"
 "  if table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then\n"
-"    return false\n"
+"    return true\n"
 "  end\n"
-"  return true\n"
+"  return false\n"
 "end\n";
 
 static const char* pdtest_lua_report = "\n"

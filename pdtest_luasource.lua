@@ -378,9 +378,7 @@ Suite = function(suite)
 end
 
 _pdtest.next = function()
-  if table.getn(_pdtest.queue) == 0 then
-    return false
-  elseif table.getn(_pdtest.queue[1].queue) == 0 then
+  if table.getn(_pdtest.queue[1].queue) == 0 then
     table.insert(_pdtest.dones, table.remove(_pdtest.queue,1))
   elseif table.getn(_pdtest.queue[1].queue[1].queue) == 0 then
     table.insert(_pdtest.queue[1].dones, table.remove(_pdtest.queue[1].queue,1))
@@ -408,7 +406,6 @@ _pdtest.next = function()
     table.insert(_pdtest.currents, current)
     table.insert(_pdtest.queue[1].queue[1].dones, table.remove(_pdtest.queue[1].queue[1].queue,1))
   end
-  return true
 end
 
 _pdtest.yield = function()
@@ -428,9 +425,9 @@ _pdtest.yield = function()
   end
   
   if table.getn(_pdtest.currents) == 0 and table.getn(_pdtest.results) == 0 and table.getn(_pdtest.queue) == 0 then
-    return false
+    return true
   end
-  return true
+  return false
 end
 
 _pdtest.report = function()
