@@ -157,7 +157,7 @@ ifeq ($(UNAME),Linux)
   OS = linux
   PD_PATH = /usr
   OPT_CFLAGS = -O6 -funroll-loops -fomit-frame-pointer
-  CFLAGS += -fPIC
+  CFLAGS += -ansi -pedantic -Wall -O2 -fPIC
   LDFLAGS += -Wl,--export-dynamic  -shared -fPIC
   LIBS += -lc
   STRIP = strip --strip-unneeded -R .note -R .comment
