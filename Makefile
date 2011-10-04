@@ -34,8 +34,8 @@ EXTRA_DIST =
 
 # -I"$(PD_INCLUDE)/pd" supports the header location for 0.43
 CFLAGS = -I"$(PD_INCLUDE)/pd" -Wall -W -g $(LUAI)
-LDFLAGS = $(LUAL)
-LIBS = 
+LDFLAGS =
+LIBS = $(LUAL)
 
 # Lua setup
 # LUA = lua
@@ -229,6 +229,8 @@ CFLAGS += $(OPT_CFLAGS)
 .PHONY = install libdir_install single_install install-doc install-exec install-examples install-manual clean dist etags $(LIBRARY_NAME)
 
 all: $(LUAD)/build.stamp $(SOURCES:.c=.$(EXTENSION))
+
+# gcc -ansi -Wall -O2 -fPIC -Ilua-5.1.4/include/  -shared -o pdtest.pd_linux pdtest.c lua-5.1.4/lib/liblua.a
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o "$*.o" -c "$*.c"
